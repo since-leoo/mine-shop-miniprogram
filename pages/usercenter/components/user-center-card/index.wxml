@@ -1,0 +1,54 @@
+<view class="user-center-card" style="padding-top: {{statusBarHeight}}px;">
+  <!-- 渐变背景层 -->
+  <view class="uc-bg"></view>
+
+  <!-- 未登录 -->
+  <block wx:if="{{currAuthStep === AuthStepType.ONE}}">
+    <view class="uc-header" bind:tap="gotoUserEditPage">
+      <image class="uc-avatar" src="{{defaultAvatarUrl}}" mode="aspectFill" />
+      <view class="uc-info">
+        <view class="uc-name">请登录</view>
+        <view class="uc-desc">点击登录账号</view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 已登录 -->
+  <block wx:else>
+    <view class="uc-header" bind:tap="gotoUserEditPage">
+      <image class="uc-avatar" src="{{userInfo.avatarUrl || defaultAvatarUrl}}" mode="aspectFill" />
+      <view class="uc-info">
+        <view class="uc-name">{{userInfo.nickName || '微信用户'}}</view>
+        <view class="uc-level" wx:if="{{userInfo.levelName}}">
+          <text class="uc-level-icon">♛</text>
+          <text class="uc-level-text">{{userInfo.levelName}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 资产数据行 -->
+    <view class="uc-assets-row">
+      <view class="uc-asset-item" bind:tap="onTapPoints">
+        <view class="uc-asset-value">{{userInfo.points || 0}}</view>
+        <view class="uc-asset-label">积分</view>
+      </view>
+      <view class="uc-asset-item" bind:tap="onTapBalance">
+        <view class="uc-asset-value">{{userInfo.balance || '0.00'}}</view>
+        <view class="uc-asset-label">余额</view>
+      </view>
+      <view class="uc-asset-item" bind:tap="onTapCoupon">
+        <view class="uc-asset-value uc-asset-value--coupon">{{couponCount || 0}}</view>
+        <view class="uc-asset-label">优惠券</view>
+      </view>
+    </view>
+
+    <!-- 会员卡条 -->
+    <view class="uc-vip-bar">
+      <view class="uc-vip-left">
+        <text class="uc-vip-icon">👑</text>
+        <text class="uc-vip-text">至尊会员卡</text>
+      </view>
+      <view class="uc-vip-btn">立即开通</view>
+    </view>
+  </block>
+</view>
