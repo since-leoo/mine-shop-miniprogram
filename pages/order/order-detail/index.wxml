@@ -69,13 +69,25 @@
         bindtap="onGoodsCardTap"
         data-index="{{gIndex}}"
       >
-        <order-button-bar
-          slot="append-card"
-          class="goods-button-bar"
-          order="{{_order}}"
-          bindrefresh="onRefresh"
-          goodsIndex="{{gIndex}}"
-        />
+        <view slot="append-card">
+          <order-button-bar
+            class="goods-button-bar"
+            order="{{_order}}"
+            bindrefresh="onRefresh"
+            bindpay="onPayOrder"
+            goodsIndex="{{gIndex}}"
+          />
+          <view
+            wx:if="{{showReviewButton && !orderHasCommented}}"
+            class="review-btn-wrap"
+          >
+            <view
+              class="review-btn"
+              catchtap="navToCommentCreate"
+              data-index="{{gIndex}}"
+            >评价</view>
+          </view>
+        </view>
       </order-goods-card>
       <view class="pay-detail">
         <view class="pay-item">
@@ -116,7 +128,7 @@
             fill
             decimalSmaller
             wr-class="pay-item__right font-bold primary max-size"
-            price="{{order.paymentAmount || '0'}}"
+            price="{{order.payAmount || '0'}}"
           />
         </view>
       </view>
@@ -157,7 +169,7 @@
     </view>
   </view>
   <view wx:if="{{_order.buttons.length > 0}}" class="bottom-bar">
-    <order-button-bar order="{{_order}}" bindrefresh="onRefresh" isBtnMax />
+    <order-button-bar order="{{_order}}" bindrefresh="onRefresh" bindpay="onPayOrder" isBtnMax />
   </view>
 </t-pull-down-refresh>
 <t-toast id="t-toast" />

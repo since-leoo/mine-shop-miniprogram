@@ -65,7 +65,7 @@
           <price fill class="real-pay" price="{{order.amount + ''}}" decimalSmaller />
         </view>
         <!-- 订单按钮栏 -->
-        <order-button-bar order="{{order}}" bindrefresh="onRefresh" data-order="{{order}}" />
+        <order-button-bar order="{{order}}" bindrefresh="onRefresh" bindpay="onPayOrder" data-order="{{order}}" />
       </view>
     </order-card>
     <!-- 列表加载中/已全部加载 -->

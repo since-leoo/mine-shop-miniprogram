@@ -18,6 +18,8 @@ Page({
     logisticsNodes: [],
     /** 订单评论状态 */
     orderHasCommented: true,
+    /** 是否显示评价按钮 */
+    showReviewButton: false,
   },
 
   onLoad(query) {
@@ -84,54 +86,68 @@ Page({
   },
 
   getDetail() {
-    const params = {
-      parameter: this.orderNo,
-    };
+    const params = { orderNo: this.orderNo };
     return fetchOrderDetail(params).then((res) => {
-      const order = res.data;
-      const _order = {
-        id: order.orderId,
-        orderNo: order.orderNo,
-        parentOrderNo: order.parentOrderNo,
-        storeId: order.storeId,
-        storeName: order.storeName,
-        status: order.orderStatus,
-        statusDesc: order.orderStatusName,
-        amount: order.paymentAmount,
-        totalAmount: order.goodsAmountApp,
-        logisticsNo: order.logisticsVO.logisticsNo,
-        goodsList: (order.orderItemVOs || []).map((goods) =>
-          Object.assign({}, goods, {
-            id: goods.id,
-            thumb: goods.goodsPictureUrl,
-            title: goods.goodsName,
-            skuId: goods.skuId,
-            spuId: goods.spuId,
-            specs: (goods.specifications || []).map((s) => s.specValue),
-            price: goods.tagPrice ? goods.tagPrice : goods.actualPrice, // 商品销售单价, 优先取限时活动价
-            num: goods.buyQuantity,
-            titlePrefixTags: goods.tagText ? [{ text: goods.tagText }] : [],
-            buttons: goods.buttonVOs || [],
-          }),
-        ),
-        buttons: order.buttonVOs || [],
-        createTime: order.createTime,
-        receiverAddress: this.composeAddress(order),
-        groupInfoVo: order.groupInfoVo,
+      // 后端返回的数据可能是 res.data 或直接 res
+      const order = res?.data || res;
+      if (!order || !order.orderNo) {
+        console.error('order detail empty');
+        return;
+      }
+
+      const addr = order.address || {};
+      const receiverAddress = addr.fullAddress || [
+        addr.province, addr.city, addr.district, addr.detail,
+      ].filter(Boolean).join('');
+
+      // 构造 logisticsVO 供 WXML 模板使用
+      order.logisticsVO = {
+        receiverName: addr.name || '',
+        receiverPhone: addr.phone || '',
+        logisticsNo: '',
       };
+
+      const _order = {
+        id: order.id,
+        orderNo: order.orderNo,
+        parentOrderNo: order.orderNo,
+        storeId: '',
+        storeName: '',
+        status: order.status,
+        statusDesc: order.orderStatusName || order.statusDesc || '',
+        amount: order.payAmount,
+        totalAmount: order.totalAmount,
+        logisticsNo: '',
+        goodsList: (order.items || []).map((goods) => ({
+          id: goods.id,
+          thumb: goods.productImage,
+          title: goods.productName,
+          skuId: goods.skuId,
+          spuId: goods.productId,
+          specs: goods.skuName ? [goods.skuName] : [],
+          price: goods.unitPrice,
+          num: goods.quantity,
+          titlePrefixTags: [],
+          buttons: [],
+        })),
+        buttons: order.buttonVOs || [],
+        createTime: order.createdAt,
+        receiverAddress,
+        groupInfoVo: null,
+      };
+      // 判断订单是否已完成，控制评价按钮显示
+      const showReviewButton = order.status === 'completed';
+
       this.setData({
         order,
         _order,
-        formatCreateTime: formatTime(parseFloat(`${order.createTime}`), 'YYYY-MM-DD HH:mm'), // 格式化订单创建时间
-        countDownTime: this.computeCountDownTime(order),
-        addressEditable:
-          [OrderStatus.PENDING_PAYMENT, OrderStatus.PENDING_DELIVERY].includes(order.orderStatus) &&
-          order.orderSubStatus !== -1, // 订单正在取消审核时不允许修改地址（但是返回的状态码与待发货一致）
-        isPaid: !!order.paymentVO.paySuccessTime,
-        invoiceStatus: this.datermineInvoiceStatus(order),
-        invoiceDesc: order.invoiceDesc,
-        invoiceType: order.invoiceVO?.invoiceType === 5 ? '电子普通发票' : '不开发票', //是否开票 0-不开 5-电子发票
-        logisticsNodes: this.flattenNodes(order.trajectoryVos || []),
+        showReviewButton,
+        orderHasCommented: !showReviewButton,
+        formatCreateTime: order.createdAt || '',
+        countDownTime: null,
+        addressEditable: false,
+        isPaid: !!order.paidAt,
+        logisticsNodes: [],
       });
     });
   },
@@ -161,14 +177,9 @@ Page({
 
   // 拼接省市区
   composeAddress(order) {
-    return [
-      //order.logisticsVO.receiverProvince,
-      order.logisticsVO.receiverCity,
-      order.logisticsVO.receiverCountry,
-      order.logisticsVO.receiverArea,
-      order.logisticsVO.receiverAddress,
-    ]
-      .filter((s) => !!s)
+    const addr = order.address || {};
+    return [addr.provinceName, addr.cityName, addr.districtName, addr.detailAddress]
+      .filter(Boolean)
       .join(' ');
   },
 
@@ -199,8 +210,17 @@ Page({
 
   onGoodsCardTap(e) {
     const { index } = e.currentTarget.dataset;
-    const goods = this.data.order.orderItemVOs[index];
-    wx.navigateTo({ url: `/pages/goods/details/index?spuId=${goods.spuId}` });
+    const goods = (this.data.order.items || [])[index];
+    if (goods) {
+      wx.navigateTo({ url: `/pages/goods/details/index?spuId=${goods.productId}` });
+    }
+  },
+
+  onPayOrder(e) {
+    const { orderNo } = e.detail;
+    wx.navigateTo({
+      url: `/pages/order/cashier/index?tradeNo=${orderNo}&mode=repay`,
+    });
   },
 
   onEditAddressTap() {
@@ -256,9 +276,23 @@ Page({
   },
 
   /** 跳转订单评价 */
-  navToCommentCreate() {
+  navToCommentCreate(e) {
+    const { index } = e.currentTarget.dataset;
+    const item = (this.data.order.items || [])[index];
+    if (!item) return;
+
+    const params = [
+      `orderId=${this.data.order.id}`,
+      `orderItemId=${item.id}`,
+      `productId=${item.productId}`,
+      `skuId=${item.skuId}`,
+      `productImage=${encodeURIComponent(item.productImage || '')}`,
+      `productName=${encodeURIComponent(item.productName || '')}`,
+      `skuName=${encodeURIComponent(item.skuName || '')}`,
+    ].join('&');
+
     wx.navigateTo({
-      url: `/pages/order/createComment/index?orderNo=${this.orderNo}`,
+      url: `/pages/goods/comments/create/index?${params}`,
     });
   },
 

@@ -14,28 +14,28 @@
       note="{{detail && detail.desc}}"
     />
     <t-cell
-      wx:if="{{detail && detail.time_limit}}"
+      wx:if="{{detail && detail.timeLimit}}"
       t-class="t-class-cell"
       t-class-title="t-class-title"
       t-class-note="t-class-note"
       title="有效时间"
-      note="{{detail && detail.time_limit}}"
+      note="{{detail && detail.timeLimit}}"
     />
     <t-cell
-      wx:if="{{detail && detail.store_adapt}}"
+      wx:if="{{detail && detail.storeAdapt}}"
       t-class="t-class-cell"
       t-class-title="t-class-title"
       t-class-note="t-class-note"
       title="适用范围"
-      note="{{detail && detail.store_adapt}}"
+      note="{{detail && detail.storeAdapt}}"
     />
     <t-cell
-      wx:if="{{detail && detail.use_notes}}"
+      wx:if="{{detail && detail.useNotes}}"
       t-class="t-class-cell"
       t-class-title="t-class-title"
       t-class-note="t-class-note"
       title="使用须知"
-      note="{{detail && detail.use_notes}}"
+      note="{{detail && detail.useNotes}}"
     />
   </t-cell-group>
   <!-- 查看可用商品 -->

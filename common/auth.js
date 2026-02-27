@@ -8,7 +8,7 @@ const MEMBER_PROFILE_KEY = 'memberProfile';
 let sharedLoginPromise = null;
 
 const persistAuthResponse = (response = {}) => {
-  const { token, refresh_token: refreshToken, member } = response || {};
+  const { token, refreshToken, member } = response || {};
   if (token) {
     wx.setStorageSync(TOKEN_STORAGE_KEY, token);
   }
@@ -30,12 +30,7 @@ const runLoginRequest = ({ encryptedData = '', iv = '', openid = '' } = {}) => {
           reject(new Error('未获取到登录凭证 code'));
           return;
         }
-        miniProgramLogin({
-          code,
-          encryptedData,
-          iv,
-          openid,
-        })
+        miniProgramLogin({ code, encryptedData, iv, openid })
           .then((response) => {
             persistAuthResponse(response);
             resolve(response);
@@ -73,6 +68,5 @@ export const ensureMiniProgramLogin = (options = {}) => {
     }
     return sharedLoginPromise;
   }
-
   return runLoginRequest({ encryptedData, iv, openid });
 };

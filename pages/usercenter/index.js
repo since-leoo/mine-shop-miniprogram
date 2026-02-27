@@ -1,32 +1,81 @@
-import { fetchUserCenter } from '../../services/usercenter/fetchUsercenter';
-import {
-  ensureMiniProgramLogin,
-  clearAuthStorage,
-  getStoredMemberProfile,
-} from '../../common/auth';
+import { fetchUserCenter, fetchInviteQrCode } from '../../services/usercenter/fetchUsercenter';
 import Toast from 'tdesign-miniprogram/toast/index';
 
-const toolsData = [
-  { title: '收货地址', type: 'address', iconName: 'location' },
-  { title: '优惠券', type: 'coupon', iconName: 'gift' },
-  { title: '积分', type: 'point', iconName: 'star' },
-  { title: '帮助中心', type: 'help-center', iconName: 'help-circle' },
-  { title: '客服热线', type: 'service', iconName: 'service' },
+const menuData = [
+  [
+    {
+      title: '收货地址',
+      tit: '',
+      url: '',
+      type: 'address',
+    },
+    {
+      title: '优惠券',
+      tit: '',
+      url: '',
+      type: 'coupon',
+    },
+    {
+      title: '我的余额',
+      tit: '',
+      url: '',
+      type: 'wallet',
+    },
+  ],
+  [
+    {
+      title: '帮助中心',
+      tit: '',
+      url: '',
+      type: 'help-center',
+    },
+    {
+      title: '客服热线',
+      tit: '',
+      url: '',
+      type: 'service',
+      icon: 'service',
+    },
+  ],
 ];
 
 const orderTagInfos = [
-  { title: '待付款', iconName: 'wallet', orderNum: 0, tabType: 5, status: 1 },
-  { title: '待发货', iconName: 'deliver', orderNum: 0, tabType: 10, status: 1 },
-  { title: '待收货', iconName: 'package', orderNum: 0, tabType: 40, status: 1 },
-  { title: '待评价', iconName: 'comment', orderNum: 0, tabType: 60, status: 1 },
-  { title: '退款/售后', iconName: 'exchang', orderNum: 0, tabType: 0, status: 1 },
+  {
+    title: '待付款',
+    iconName: 'wallet',
+    orderNum: 0,
+    tabType: 5,
+    status: 1,
+  },
+  {
+    title: '待发货',
+    iconName: 'deliver',
+    orderNum: 0,
+    tabType: 10,
+    status: 1,
+  },
+  {
+    title: '待收货',
+    iconName: 'package',
+    orderNum: 0,
+    tabType: 40,
+    status: 1,
+  },
+  {
+    title: '待评价',
+    iconName: 'comment',
+    orderNum: 0,
+    tabType: 60,
+    status: 1,
+  },
+  {
+    title: '退款/售后',
+    iconName: 'exchang',
+    orderNum: 0,
+    tabType: 0,
+    status: 1,
+  },
 ];
-
-const AUTH_STEP = {
-  UNLOGIN: 1,
-  BASIC: 2,
-  FULL: 3,
-};
 
 const getDefaultData = () => ({
   showMakePhone: false,
@@ -35,15 +84,12 @@ const getDefaultData = () => ({
     nickName: '正在登录...',
     phoneNumber: '',
   },
-  toolsData,
+  menuData,
   orderTagInfos,
-  couponCount: 0,
   customerServiceInfo: {},
-  currAuthStep: AUTH_STEP.UNLOGIN,
+  currAuthStep: 1,
   showKefu: true,
   versionNo: '',
-  authLoading: false,
-  pageLoading: false,
 });
 
 Page({
@@ -54,146 +100,99 @@ Page({
   },
 
   onShow() {
-    const tabBar = this.getTabBar && this.getTabBar();
-    if (tabBar && typeof tabBar.init === 'function') {
-      tabBar.init();
-    }
+    this.getTabBar().init();
     this.init();
   },
-
   onPullDownRefresh() {
     this.init();
   },
 
-  async init() {
-    this.setData({ pageLoading: true });
-    const hasLogin = await this.ensureLoginState();
-    if (!hasLogin) {
-      this.setData({ pageLoading: false });
-      wx.stopPullDownRefresh();
-      return;
-    }
-    this.fetchCenterData();
+  init() {
+    this.fetUseriInfoHandle();
   },
 
-  async ensureLoginState(force = false) {
-    try {
-      const storedProfile = getStoredMemberProfile();
-      await ensureMiniProgramLogin({ force, openid: storedProfile?.openid || '' });
-      this.setData({ currAuthStep: AUTH_STEP.BASIC });
-      return true;
-    } catch (error) {
-      console.warn('mini program login failed', error);
-      this.setData({
-        currAuthStep: AUTH_STEP.UNLOGIN,
-        userInfo: getDefaultData().userInfo,
+  fetUseriInfoHandle() {
+    fetchUserCenter().then(({ userInfo, countsData, orderTagInfos: orderInfo, customerServiceInfo }) => {
+      // 将余额（分）转换为元，显示在"我的余额"菜单项
+      const balanceCents = userInfo?.balance || 0;
+      const balanceYuan = (balanceCents / 100).toFixed(2);
+
+      menuData?.[0].forEach((v) => {
+        if (v.type === 'wallet') {
+          v.tit = `¥${balanceYuan}`;
+        }
+        (countsData || []).forEach((counts) => {
+          if (counts.type === v.type) {
+            v.tit = counts.num;
+          }
+        });
       });
-      return false;
-    }
-  },
-
-  async fetchCenterData() {
-    this.setData({ pageLoading: true });
-    try {
-      const {
-        userInfo = {},
-        countsData = [],
-        orderTagInfos: orderInfo = [],
-        customerServiceInfo = {},
-      } = await fetchUserCenter();
-
-      const couponMatch = countsData.find((c) => c.type === 'coupon');
-      const couponCount = couponMatch ? couponMatch.num : 0;
-
       const info = orderTagInfos.map((v, index) => ({
         ...v,
         ...(orderInfo?.[index] || {}),
       }));
-
-      const needUserProfile = !Boolean(userInfo.authorizedProfile);
-
       this.setData({
         userInfo,
+        menuData,
         orderTagInfos: info,
         customerServiceInfo,
-        couponCount,
-        currAuthStep: needUserProfile ? AUTH_STEP.BASIC : AUTH_STEP.FULL,
-        pageLoading: false,
+        currAuthStep: 2,
       });
-
-    } catch (error) {
-      console.warn('fetch user center failed', error);
-      if (error?.code === 401) {
-        clearAuthStorage();
-        this.setData({ currAuthStep: AUTH_STEP.UNLOGIN });
-      } else {
-        Toast({
-          context: this,
-          selector: '#t-toast',
-          message: error?.msg || '获取个人中心信息失败',
-          theme: 'error',
-        });
-      }
-      this.setData({ pageLoading: false });
-    } finally {
       wx.stopPullDownRefresh();
-    }
-  },
-
-  async handleLoginTap() {
-    if (this.data.authLoading) return;
-    this.setData({ authLoading: true });
-    const success = await this.ensureLoginState(true);
-    if (success) {
-      await this.fetchCenterData();
-    } else {
-      Toast({
-        context: this,
-        selector: '#t-toast',
-        message: '登录失败，请稍后重试',
-        theme: 'error',
-      });
-    }
-    this.setData({ authLoading: false });
+    });
   },
 
   onClickCell({ currentTarget }) {
     const { type } = currentTarget.dataset;
+
     switch (type) {
-      case 'address':
+      case 'address': {
         wx.navigateTo({ url: '/pages/user/address/list/index' });
         break;
-      case 'service':
+      }
+      case 'service': {
         this.openMakePhone();
         break;
-      case 'help-center':
-        Toast({ context: this, selector: '#t-toast', message: '你点击了帮助中心', icon: '', duration: 1000 });
+      }
+      case 'wallet':
+      case 'balance': {
+        wx.navigateTo({ url: '/pages/usercenter/wallet-transactions/index?type=balance' });
         break;
-      case 'point':
-        Toast({ context: this, selector: '#t-toast', message: '你点击了积分', icon: '', duration: 1000 });
+      }
+      case 'point': {
+        wx.navigateTo({ url: '/pages/usercenter/wallet-transactions/index?type=points' });
         break;
-      case 'coupon':
+      }
+      case 'help-center': {
+        Toast({
+          context: this,
+          selector: '#t-toast',
+          message: '你点击了帮助中心',
+          icon: '',
+          duration: 1000,
+        });
+        break;
+      }
+      case 'coupon': {
         wx.navigateTo({ url: '/pages/coupon/coupon-list/index' });
         break;
-      default:
+      }
+      default: {
+        Toast({
+          context: this,
+          selector: '#t-toast',
+          message: '未知跳转',
+          icon: '',
+          duration: 1000,
+        });
         break;
+      }
     }
-  },
-
-  onTapPoints() {
-    Toast({ context: this, selector: '#t-toast', message: '你点击了积分', icon: '', duration: 1000 });
-  },
-
-  onTapBalance() {
-    Toast({ context: this, selector: '#t-toast', message: '你点击了余额', icon: '', duration: 1000 });
-  },
-
-  onTapCoupon() {
-    wx.navigateTo({ url: '/pages/coupon/coupon-list/index' });
   },
 
   jumpNav(e) {
     const status = e.detail.tabType;
+
     if (status === 0) {
       wx.navigateTo({ url: '/pages/order/after-service-list/index' });
     } else {
@@ -214,16 +213,47 @@ Page({
   },
 
   call() {
-    wx.makePhoneCall({ phoneNumber: this.data.customerServiceInfo.servicePhone });
+    wx.makePhoneCall({
+      phoneNumber: this.data.customerServiceInfo.servicePhone,
+    });
   },
 
   gotoUserEditPage() {
     const { currAuthStep } = this.data;
-    if (currAuthStep === AUTH_STEP.UNLOGIN) {
-      this.handleLoginTap();
-      return;
+    if (currAuthStep === 2) {
+      wx.navigateTo({ url: '/pages/user/person-info/index' });
+    } else {
+      this.fetUseriInfoHandle();
     }
-    wx.navigateTo({ url: '/pages/user/person-info/index' });
+  },
+
+  onTapQrCode() {
+    wx.showLoading({ title: '生成中...' });
+    fetchInviteQrCode()
+      .then((res) => {
+        wx.hideLoading();
+        if (res.path) {
+          wx.previewImage({ urls: [res.path], current: res.path });
+        } else {
+          Toast({
+            context: this,
+            selector: '#t-toast',
+            message: res.msg || '生成失败',
+            icon: '',
+            duration: 1500,
+          });
+        }
+      })
+      .catch(() => {
+        wx.hideLoading();
+        Toast({
+          context: this,
+          selector: '#t-toast',
+          message: '获取小程序码失败',
+          icon: '',
+          duration: 1500,
+        });
+      });
   },
 
   getVersionInfo() {

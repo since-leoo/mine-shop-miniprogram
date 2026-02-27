@@ -1,6 +1,6 @@
 {
   "libVersion": "3.14.2",
-  "projectname": "shopProgramMini",
+  "projectname": "mine-shop-miniprogram",
   "condition": {},
   "setting": {
     "urlCheck": false,
@@ -18,7 +18,7 @@
     "compileHotReLoad": true,
     "checkInvalidKey": true,
     "ignoreDevUnusedFiles": false,
-    "bigPackageSizeSupport": false,
+    "bigPackageSizeSupport": true,
     "useIsolateContext": true
   }
 }

@@ -1,7 +1,7 @@
 import Toast from 'tdesign-miniprogram/toast/index';
-import { fetchDeliveryAddress, createDeliveryAddress, updateDeliveryAddress } from '../../../../services/address/fetchAddress';
+import { fetchDeliveryAddress, createAddress, updateAddress } from '../../../../services/address/fetchAddress';
 import { areaData } from '../../../../config/index';
-import { resolveAddress, rejectAddress } from '../../../../services/address/edit';
+import { resolveAddress, rejectAddress } from '../../../../services/address/list';
 
 const innerPhoneReg = '^1(?:3\\d|4[4-9]|5[0-35-9]|6[67]|7[0-8]|8\\d|9\\d)\\d{8}$';
 const innerNameReg = '^[a-zA-Z\\d\\u4e00-\\u9fa5]+$';
@@ -43,23 +43,25 @@ Page({
     visible: false,
     labelValue: '',
     columns: 3,
-    saving: false,
   },
-  privateData: {
-    verifyTips: '',
-  },
+  privateData: null,
   onLoad(options) {
+    this.initPrivateData();
     const { id } = options;
     this.init(id);
   },
 
   onUnload() {
-    if (!this.hasSave) {
+    if (!this.hasSava) {
       rejectAddress();
     }
   },
 
-  hasSave: false,
+  hasSava: false,
+
+  initPrivateData() {
+    this.privateData = { verifyTips: '' };
+  },
 
   init(id) {
     if (id) {
@@ -67,49 +69,15 @@ Page({
     }
   },
   getAddressDetail(id) {
-    fetchDeliveryAddress(id)
-      .then((detail) => {
-        // 后端返回 snake_case，映射为页面内部 camelCase 状态
-        this.setData(
-          {
-            locationState: {
-              ...this.data.locationState,
-              addressId: String(detail?.id || ''),
-              name: detail?.name || '',
-              phone: detail?.phone || '',
-              provinceName: detail?.province || '',
-              provinceCode: detail?.province_code || '',
-              cityName: detail?.city || '',
-              cityCode: detail?.city_code || '',
-              districtName: detail?.district || '',
-              districtCode: detail?.district_code || '',
-              detailAddress: detail?.detail || '',
-              isDefault: Boolean(detail?.is_default),
-            },
-          },
-          () => {
-            const { isLegal, tips } = this.onVerifyInputLegal();
-            this.setData({
-              submitActive: isLegal,
-            });
-            this.privateData.verifyTips = tips;
-          },
-        );
-      })
-      .catch((error) => {
-        Toast({
-          context: this,
-          selector: '#t-toast',
-          message: error?.msg || '获取地址详情失败',
-          theme: 'error',
-          duration: 1500,
+    fetchDeliveryAddress(id).then((detail) => {
+      this.setData({ locationState: detail }, () => {
+        const { isLegal, tips } = this.onVerifyInputLegal();
+        this.setData({
+          submitActive: isLegal,
         });
+        this.privateData.verifyTips = tips;
       });
-  },
-  findLabelIndex(tagName = '') {
-    const { labels = [] } = this.data;
-    const index = labels.findIndex((item) => item.name === tagName);
-    return index > -1 ? index : null;
+    });
   },
   onInputValue(e) {
     const { item } = e.currentTarget.dataset;
@@ -167,7 +135,6 @@ Page({
     }
     this.setData({
       'locationState.labelIndex': payload.labelIndex,
-      'locationState.addressTag': payload.addressTag,
     });
     this.triggerEvent('triggerUpdateValue', payload);
   },
@@ -193,7 +160,7 @@ Page({
   onCheckDefaultAddress({ detail }) {
     const { value } = detail;
     this.setData({
-      'locationState.isDefault': !!value,
+      'locationState.isDefault': value,
     });
   },
 
@@ -333,69 +300,47 @@ Page({
   formSubmit() {
     const { submitActive } = this.data;
     if (!submitActive) {
-      Toast({
-        context: this,
-        selector: '#t-toast',
-        message: this.privateData.verifyTips,
-        icon: '',
-        duration: 1000,
-      });
+      Toast({ context: this, selector: '#t-toast', message: this.privateData.verifyTips, icon: '', duration: 1000 });
       return;
     }
     const { locationState } = this.data;
-
-    if (this.data.saving) {
-      return;
-    }
-
-    this.setData({ saving: true });
-    const payload = this.buildSubmitPayload(locationState);
-    const request = locationState.addressId
-      ? updateDeliveryAddress(locationState.addressId, payload)
-      : createDeliveryAddress(payload);
-
-    request
-      .then((savedAddress) => {
-        this.hasSave = true;
-        Toast({
-          context: this,
-          selector: '#t-toast',
-          message: locationState.addressId ? '更新成功' : '添加成功',
-          theme: 'success',
-          duration: 1200,
-        });
-        resolveAddress(savedAddress);
-        setTimeout(() => {
-          wx.navigateBack({ delta: 1 });
-        }, 300);
-      })
-      .catch((error) => {
-        Toast({
-          context: this,
-          selector: '#t-toast',
-          message: error?.msg || '保存地址失败',
-          theme: 'error',
-          duration: 1500,
-        });
-      })
-      .finally(() => {
-        this.setData({ saving: false });
-      });
-  },
-
-  buildSubmitPayload(state = {}) {
-    return {
-      name: state.name || '',
-      phone: state.phone || '',
-      province: state.provinceName || '',
-      province_code: state.provinceCode || '',
-      city: state.cityName || '',
-      city_code: state.cityCode || '',
-      district: state.districtName || '',
-      district_code: state.districtCode || '',
-      detail: state.detailAddress || '',
-      is_default: Boolean(state.isDefault),
+    const payload = {
+      name: locationState.name,
+      phone: locationState.phone,
+      province: locationState.provinceName,
+      province_code: locationState.provinceCode,
+      city: locationState.cityName,
+      city_code: locationState.cityCode,
+      district: locationState.districtName,
+      district_code: locationState.districtCode,
+      detail: locationState.detailAddress,
+      is_default: locationState.isDefault ? 1 : 0,
+      address_tag: locationState.addressTag || '',
     };
+
+    const savePromise = locationState.addressId
+      ? updateAddress(locationState.addressId, payload)
+      : createAddress(payload);
+
+    savePromise.then((res) => {
+      this.hasSava = true;
+      const savedAddress = {
+        ...locationState,
+        id: res?.id || locationState.addressId,
+        addressId: res?.addressId || res?.id || locationState.addressId,
+        phone: locationState.phone,
+        provinceName: locationState.provinceName,
+        cityName: locationState.cityName,
+        districtName: locationState.districtName,
+        detailAddress: locationState.detailAddress,
+        isDefault: locationState.isDefault ? 1 : 0,
+        addressTag: locationState.addressTag,
+      };
+      resolveAddress(savedAddress);
+      wx.navigateBack({ delta: 1 });
+    }).catch((err) => {
+      Toast({ context: this, selector: '#t-toast', message: err.msg || '保存失败', icon: '', duration: 1000 });
+    });
   },
 
   getWeixinAddress(e) {

@@ -1,9 +1,7 @@
 import { config } from '../../config/index';
 import { request } from '../request';
 
-/**
- * 后端状态(string) → 小程序 tab key(number) 映射
- */
+/** 后端状态(string) → 小程序 tab key(number) */
 const STATUS_TO_TAB = {
   pending: 5,
   paid: 10,
@@ -14,9 +12,7 @@ const STATUS_TO_TAB = {
   refunded: 80,
 };
 
-/**
- * 小程序 tab key(number) → 后端状态(string) 映射
- */
+/** 小程序 tab key(number) → 后端状态(string) */
 const TAB_TO_STATUS = {
   '-1': 'all',
   5: 'pending',
@@ -32,9 +28,7 @@ function mockFetchOrders(params) {
   return delay(200).then(() => genOrders(params));
 }
 
-/**
- * 将后端订单数据转换为小程序页面期望的格式
- */
+/** 将后端订单数据转换为小程序页面期望的格式 */
 function transformOrder(order) {
   return {
     id: order.id,
@@ -70,26 +64,21 @@ export function fetchOrders(params) {
   if (config.useMock) {
     return mockFetchOrders(params);
   }
-
   const { pageNum = 1, pageSize = 10, orderStatus } = params.parameter || {};
   const status = orderStatus !== undefined ? (TAB_TO_STATUS[orderStatus] || 'all') : 'all';
 
   return request({
     url: '/api/v1/order/list',
     method: 'GET',
-    data: {
-      status,
-      page: pageNum,
-      page_size: pageSize,
-    },
+    data: { status, page: pageNum, page_size: pageSize },
     needAuth: true,
   }).then((data) => {
     const orders = (data.list || []).map(transformOrder);
     return {
       data: {
         orders,
-        pageNum: data.pagination?.current_page || pageNum,
-        pageSize: data.pagination?.per_page || pageSize,
+        pageNum: data.pagination?.currentPage || pageNum,
+        pageSize: data.pagination?.perPage || pageSize,
         totalCount: data.pagination?.total || 0,
       },
     };
@@ -108,17 +97,16 @@ export function fetchOrdersCount(params) {
   if (config.useMock) {
     return mockFetchOrdersCount(params);
   }
-
   return request({
     url: '/api/v1/order/statistics',
     method: 'GET',
     needAuth: true,
   }).then((data) => {
     const tabsCount = [
-      { tabType: 5, orderNum: data.pending_count || 0 },
-      { tabType: 10, orderNum: data.paid_count || 0 },
-      { tabType: 40, orderNum: data.shipped_count || 0 },
-      { tabType: 50, orderNum: data.completed_count || 0 },
+      { tabType: 5, orderNum: data.pendingCount || 0 },
+      { tabType: 10, orderNum: data.paidCount || 0 },
+      { tabType: 40, orderNum: data.shippedCount || 0 },
+      { tabType: 50, orderNum: data.completedCount || 0 },
     ];
     return { data: tabsCount };
   });

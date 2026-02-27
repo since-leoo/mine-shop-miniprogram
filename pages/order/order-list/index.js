@@ -61,7 +61,9 @@ Page({
 
   init(status) {
     status = status !== undefined ? status : this.data.curTab;
-    this.setData({ status });
+    this.setData({
+      status,
+    });
     this.refreshList(status);
   },
 
@@ -77,8 +79,11 @@ Page({
     return fetchOrders(params)
       .then((res) => {
         this.page.num++;
-        // service 层已完成数据转换，直接使用 orders
-        const orderList = (res.data && res.data.orders) || [];
+        let orderList = [];
+        if (res && res.data && res.data.orders) {
+          // 数据已在 service 层 transformOrder 中转换完毕
+          orderList = res.data.orders;
+        }
         return new Promise((resolve) => {
           if (reset) {
             this.setData({ orderList: [] }, () => resolve());
@@ -102,7 +107,9 @@ Page({
 
   onTabChange(e) {
     const { value } = e.detail;
-    this.setData({ status: value });
+    this.setData({
+      status: value,
+    });
     this.refreshList(value);
   },
 
@@ -138,6 +145,13 @@ Page({
     const { order } = e.currentTarget.dataset;
     wx.navigateTo({
       url: `/pages/order/order-detail/index?orderNo=${order.orderNo}`,
+    });
+  },
+
+  onPayOrder(e) {
+    const { orderNo } = e.detail;
+    wx.navigateTo({
+      url: `/pages/order/cashier/index?tradeNo=${orderNo}&mode=repay`,
     });
   },
 });

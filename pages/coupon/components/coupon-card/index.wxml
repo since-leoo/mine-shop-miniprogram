@@ -5,7 +5,7 @@
   tag="{{couponDTO.tag || ''}}"
   desc="{{couponDTO.desc || ''}}"
   currency="{{couponDTO.currency || ''}}"
-  timeLimit="{{couponDTO.time_limit || ''}}"
+  timeLimit="{{couponDTO.timeLimit || ''}}"
   status="{{couponDTO.status || ''}}"
   bind:tap="gotoDetail"
 >

@@ -5,23 +5,14 @@ import { dispatchCommitPay } from '../../../services/order/orderConfirm';
 
 // 真实的提交支付
 export const commitPay = (params) => {
-  return dispatchCommitPay({
-    goodsRequestList: params.goodsRequestList, // 待结算的商品集合
-    invoiceRequest: params.invoiceRequest, // 发票信息
-    userAddressReq: params.userAddressReq, // 地址信息(用户在购物选择更换地址)
-    orderType: params.orderType || 'normal', // 订单类型 normal=普通订单
-    totalAmount: params.totalAmount, // 总的支付金额（分）
-    userName: params.userName, // 用户名
-    storeInfoList: params.storeInfoList, //备注信息列表
-    couponList: params.couponList,
-  });
+  return dispatchCommitPay(params);
 };
 
-export const paySuccess = (ctx, payOrderInfo) => {
+export const paySuccess = (payOrderInfo) => {
   const { payAmt, tradeNo, groupId, promotionId } = payOrderInfo;
   // 支付成功
   Toast({
-    context: ctx,
+    context: this,
     selector: '#t-toast',
     message: '支付成功',
     duration: 2000,
@@ -45,7 +36,7 @@ export const paySuccess = (ctx, payOrderInfo) => {
   wx.redirectTo({ url: `/pages/order/pay-result/index?${paramsStr}` });
 };
 
-export const payFail = (ctx, payOrderInfo, resultMsg) => {
+export const payFail = (payOrderInfo, resultMsg) => {
   if (resultMsg === 'requestPayment:fail cancel') {
     if (payOrderInfo.dialogOnCancel) {
       //结算页，取消付款，dialog提示
@@ -60,7 +51,7 @@ export const payFail = (ctx, payOrderInfo, resultMsg) => {
     } else {
       //订单列表页，订单详情页，取消付款，toast提示
       Toast({
-        context: ctx,
+        context: this,
         selector: '#t-toast',
         message: '支付取消',
         duration: 2000,
@@ -69,7 +60,7 @@ export const payFail = (ctx, payOrderInfo, resultMsg) => {
     }
   } else {
     Toast({
-      context: ctx,
+      context: this,
       selector: '#t-toast',
       message: `支付失败：${resultMsg}`,
       duration: 2000,
@@ -82,12 +73,12 @@ export const payFail = (ctx, payOrderInfo, resultMsg) => {
 };
 
 // 微信支付方式
-export const wechatPayOrder = (ctx, payOrderInfo) => {
+export const wechatPayOrder = (payOrderInfo) => {
   // const payInfo = JSON.parse(payOrderInfo.payInfo);
   // const { timeStamp, nonceStr, signType, paySign } = payInfo;
   return new Promise((resolve) => {
     // demo 中直接走支付成功
-    paySuccess(ctx, payOrderInfo);
+    paySuccess(payOrderInfo);
     resolve();
     /* wx.requestPayment({
       timeStamp,
@@ -96,11 +87,11 @@ export const wechatPayOrder = (ctx, payOrderInfo) => {
       signType,
       paySign,
       success: function () {
-        paySuccess(ctx, payOrderInfo);
+        paySuccess(payOrderInfo);
         resolve();
       },
       fail: function (err) {
-        payFail(ctx, payOrderInfo, err.errMsg);
+        payFail(payOrderInfo, err.errMsg);
       },
     }); */
   });

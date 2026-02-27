@@ -20,18 +20,8 @@ Component({
 
   methods: {
     change(e) {
-      const { index, couponId, promotionId } = e.currentTarget.dataset;
+      const { index } = e.currentTarget.dataset;
       this.triggerEvent('promotionChange', {
-        index,
-        couponId,
-        promotionId,
-      });
-    },
-
-    receiveCoupon(e) {
-      const { couponId, index } = e.currentTarget.dataset;
-      this.triggerEvent('receiveCoupon', {
-        couponId,
         index,
       });
     },

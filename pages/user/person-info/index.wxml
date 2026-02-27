@@ -1,90 +1,133 @@
 <view class="person-info">
-  <!-- 未授权头像昵称时，显示提示 -->
-  <view class="person-info__authorize-card" wx:if="{{!personInfo.authorizedProfile}}">
-    <view class="person-info__authorize-tip">请完善头像和昵称信息</view>
-  </view>
-
   <t-cell-group>
-    <!-- 头像：使用 chooseAvatar 能力 -->
-    <t-cell title="头像" center="{{true}}" t-class-left="order-group__left">
-      <view slot="note" class="avatar-cell">
-        <button
-          class="avatar-button"
-          open-type="chooseAvatar"
-          bind:chooseavatar="onChooseAvatar"
-        >
-          <image
-            class="avatar-image"
-            src="{{personInfo.avatarUrl || defaultAvatarUrl}}"
-            mode="aspectFill"
+    <!-- 头像 -->
+    <t-cell
+      title="头像"
+      center="{{true}}"
+      arrow
+      t-class-left="order-group__left"
+      bind:click="onChooseAvatar"
+    >
+      <t-image wx:if="{{personInfo.avatarUrl}}" slot="note" src="{{personInfo.avatarUrl}}" t-class="avatarUrl" mode="aspectFill" />
+      <view wx:else slot="note" class="avatar-placeholder">未设置</view>
+    </t-cell>
+    <!-- 昵称 -->
+    <t-cell
+      title="昵称"
+      arrow="{{!editingNickname}}"
+      t-class="t-cell-class"
+      t-class-left="order-group__left"
+      bind:click="onEditNickname"
+    >
+      <view slot="note">
+        <block wx:if="{{editingNickname}}">
+          <input
+            class="nickname-inline-input"
+            value="{{nicknameInput}}"
+            placeholder="请输入昵称"
+            maxlength="20"
+            focus="{{editingNickname}}"
+            bindinput="onNicknameInput"
+            bindblur="onNicknameBlur"
+            bindconfirm="onNicknameBlur"
           />
-        </button>
-        <t-icon name="chevron-right" size="40rpx" color="#bbb" />
+        </block>
+        <block wx:else>
+          <text>{{personInfo.nickName || '未设置'}}</text>
+        </block>
       </view>
     </t-cell>
-
-    <!-- 昵称：使用 nickname 输入能力 -->
-    <t-cell title="昵称" t-class="t-cell-class" t-class-left="order-group__left">
-      <input
-        slot="note"
-        type="nickname"
-        class="nickname-input"
-        value="{{personInfo.nickName}}"
-        placeholder="请输入昵称"
-        bindinput="onNicknameInput"
-        bindblur="onNicknameBlur"
-      />
-    </t-cell>
-
     <!-- 性别 -->
     <t-cell
       title="性别"
       arrow
-      note="{{genderMap[personInfo.gender] || '未知'}}"
+      note="{{genderMap[personInfo.gender] || '未设置'}}"
       data-type="gender"
       bind:click="onClickCell"
       t-class="t-cell-class"
       t-class-left="order-group__left"
     />
-
     <!-- 手机号 -->
     <t-cell
-      bordered="{{false}}"
       title="手机号"
-      arrow="{{false}}"
+      arrow="{{!editingPhone}}"
       t-class="t-cell-class"
       t-class-left="order-group__left"
+      bind:click="onEditPhone"
     >
-      <view slot="note" wx:if="{{displayPhoneNumber}}">{{displayPhoneNumber}}</view>
-      <t-button
-        slot="note"
-        size="small"
-        variant="outline"
-        theme="primary"
-        open-type="getPhoneNumber"
-        bind:getphonenumber="onBindPhoneNumber"
-        loading="{{phoneAuthLoading}}"
-        t-class="phone-bind-button"
-        wx:else
-      >
-        授权手机号
-      </t-button>
+      <view slot="note" class="phone-note-wrap">
+        <block wx:if="{{editingPhone}}">
+          <input
+            class="phone-inline-input"
+            value="{{phoneInput}}"
+            type="number"
+            placeholder="请输入手机号"
+            maxlength="11"
+            focus="{{editingPhone}}"
+            bindinput="onPhoneInput"
+            bindblur="onPhoneBlur"
+            bindconfirm="onPhoneBlur"
+          />
+        </block>
+        <block wx:else>
+          <view class="phone-note-inner">
+            <text>{{personInfo.phoneNumber || '去绑定手机号'}}</text>
+            <!-- 微信授权手机号按钮（仅未绑定时显示） -->
+            <button
+              wx:if="{{!personInfo.phoneNumber}}"
+              class="wx-phone-btn"
+              open-type="getPhoneNumber"
+              bindgetphonenumber="onGetPhoneNumber"
+              catchtap
+            >授权</button>
+          </view>
+        </block>
+      </view>
     </t-cell>
   </t-cell-group>
-
-  <!-- 保存按钮：头像或昵称有变更时显示 -->
-  <view class="person-info__save-wrapper" wx:if="{{hasProfileChange}}">
-    <t-button
-      block
-      shape="round"
-      theme="primary"
-      loading="{{profileSaving}}"
-      bind:tap="onSaveProfile"
-    >
-      保存
-    </t-button>
-  </view>
 </view>
+
+<!-- 底部提交按钮 -->
+<view class="person-info__wrapper">
+  <t-button theme="primary" block loading="{{submitting}}" bind:tap="onSubmit">提交</t-button>
+</view>
+
+<!-- 头像来源选择（自定义底部弹窗） -->
+<t-popup visible="{{showAvatarSheet}}" placement="bottom" bind:visible-change="onAvatarSheetCancel">
+  <view class="avatar-sheet">
+    <!-- 顶部微信头像预览 -->
+    <view class="avatar-sheet__preview">
+      <image
+        class="avatar-sheet__preview-img"
+        src="{{wxAvatarUrl}}"
+        mode="aspectFill"
+        wx:if="{{wxAvatarUrl}}"
+      />
+      <view class="avatar-sheet__preview-placeholder" wx:else>
+        <t-icon name="user" size="80rpx" color="#ccc" />
+      </view>
+    </view>
+    <!-- 微信授权头像（直接应用） -->
+    <view class="avatar-sheet__item" bind:tap="onUseWechatAvatar">微信授权头像</view>
+    <view class="avatar-sheet__divider"></view>
+    <!-- 从相册选择 -->
+    <view class="avatar-sheet__item" bind:tap="onChooseFromAlbum">从相册选择</view>
+    <view class="avatar-sheet__gap"></view>
+    <!-- 取消 -->
+    <view class="avatar-sheet__item avatar-sheet__cancel" bind:tap="onAvatarSheetCancel">取消</view>
+  </view>
+</t-popup>
+
+<!-- 微信授权昵称确认弹窗 -->
+<t-dialog
+  visible="{{showNicknameAuthDialog}}"
+  title="获取昵称"
+  content="是否使用微信昵称？"
+  confirm-btn="使用微信昵称"
+  cancel-btn="手动输入"
+  bind:confirm="onUseWechatNickname"
+  bind:cancel="onManualNickname"
+/>
 
 <t-select-picker
   show="{{typeVisible}}"

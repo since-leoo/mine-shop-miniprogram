@@ -51,10 +51,9 @@
     "disableSWC": true
   },
   "compileType": "miniprogram",
-  "libVersion": "3.13.0",
+  "libVersion": "3.14.2",
   "appid": "wx7fb99d5104b942ba",
   "projectname": "tdesign-miniprogram-starter-retail",
-  "miniprogramRoot": "./",
   "simulatorType": "wechat",
   "simulatorPluginLibVersion": {},
   "condition": {

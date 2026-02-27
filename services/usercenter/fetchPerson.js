@@ -1,20 +1,7 @@
 import { config } from '../../config/index';
 import { request } from '../request';
 
-const normalizeGender = (gender) => {
-  if (typeof gender === 'number') {
-    return gender;
-  }
-  if (gender === 'male') {
-    return 1;
-  }
-  if (gender === 'female') {
-    return 2;
-  }
-  return 0;
-};
-
-/** 获取个人中心信息 */
+/** 获取个人中心信息 (mock) */
 function mockFetchPerson() {
   const { delay } = require('../_utils/delay');
   const { genSimpleUserInfo } = require('../../model/usercenter');
@@ -23,10 +10,10 @@ function mockFetchPerson() {
   return delay().then(() => ({
     ...genSimpleUserInfo(),
     address: {
-      province: address.province,
-      province_code: address.province_code,
-      city: address.city,
-      city_code: address.city_code,
+      provinceName: address.provinceName,
+      provinceCode: address.provinceCode,
+      cityName: address.cityName,
+      cityCode: address.cityCode,
     },
   }));
 }
@@ -41,17 +28,60 @@ export function fetchPerson() {
     method: 'GET',
     needAuth: true,
   }).then((data = {}) => {
-    const profile = data.member || {};
+    const member = data.member || data;
     return {
-      avatarUrl: profile.avatar || '',
-      nickName: profile.nickname || '',
-      phoneNumber: profile.phone || '',
-      gender: normalizeGender(profile.gender),
-      levelName: profile.level_name || null,
-      level: profile.level || null,
-      balance: profile.balance || 0,
-      points: profile.points || 0,
-      authorizedProfile: Boolean(profile.authorized_profile),
+      avatarUrl: member.avatar || '',
+      nickName: member.nickname || '',
+      phoneNumber: member.phone || '',
+      gender: member.gender ? ({'male': 1, 'female': 2}[member.gender] || 0) : 0,
     };
+  });
+}
+
+/** 修改个人资料 */
+export function updateProfile(data) {
+  if (config.useMock) {
+    const { delay } = require('../_utils/delay');
+    return delay().then(() => ({}));
+  }
+  return request({
+    url: '/api/v1/member/profile/update',
+    method: 'POST',
+    data,
+    needAuth: true,
+  });
+}
+
+/** 上传图片 */
+export function uploadImage(filePath) {
+  const baseUrl = config.apiBaseUrl || '';
+  const normalizedBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  const storageKey = config.tokenStorageKey || 'accessToken';
+  const token = wx.getStorageSync(storageKey);
+
+  return new Promise((resolve, reject) => {
+    wx.uploadFile({
+      url: `${normalizedBase}/api/v1/upload/image`,
+      filePath,
+      name: 'file',
+      header: {
+        Authorization: token ? `Bearer ${token}` : '',
+      },
+      success(res) {
+        try {
+          const body = JSON.parse(res.data);
+          if (body.code === 200 && body.data) {
+            resolve(body.data.url);
+          } else {
+            reject({ msg: body.message || '上传失败' });
+          }
+        } catch (e) {
+          reject({ msg: '上传响应解析失败' });
+        }
+      },
+      fail(err) {
+        reject({ msg: err.errMsg || '上传失败' });
+      },
+    });
   });
 }

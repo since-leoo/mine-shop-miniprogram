@@ -1,6 +1,5 @@
 import Toast from 'tdesign-miniprogram/toast/index';
-import { fetchSettleDetail, requestOrderPayment } from '../../../services/order/orderConfirm';
-import { commitPay, wechatPayOrder, paySuccess } from './pay';
+import { fetchSettleDetail, dispatchCommitPay } from '../../../services/order/orderConfirm';
 import { getAddressPromise } from '../../../services/address/list';
 
 const stripeImg = `https://tdesign.gtimg.com/miniprogram/template/retail/order/stripe.png`;
@@ -11,12 +10,14 @@ Page({
     stripeImg,
     loading: false,
     settleDetailData: {
-      items: [],
-      price: { goodsAmount: 0, discountAmount: 0, shippingFee: 0, totalAmount: 0, payAmount: 0 },
-      couponAmount: 0,
-      storeName: '',
+      storeGoodsList: [], //正常下单商品列表
+      outOfStockGoodsList: [], //库存不足商品
+      abnormalDeliveryGoodsList: [], // 不能正常配送商品
+      inValidGoodsList: [], // 失效或者库存不足
+      limitGoodsList: [], //限购商品
+      couponList: [], //门店优惠券信息
     }, // 获取结算页详情 data
-    goodsCardList: [], // 仅用于商品卡片展示
+    orderCardList: [], // 仅用于商品卡片展示
     couponsShow: false, // 显示优惠券的弹框
     invoiceData: {
       email: '', // 发票发送邮箱
@@ -31,17 +32,15 @@ Page({
     userAddressReq: null,
     popupShow: false, // 不在配送范围 失效 库存不足 商品展示弹框
     notesPosition: 'center',
-    remark: '',
-    submitCouponList: [],
-    selectedCouponIds: [],
+    storeInfoList: [],
+    storeNoteIndex: 0, //当前填写备注门店index
+    selectedCouponId: null, //当前选中的优惠券ID
     userAddress: null,
-    payMethods: [],
-    showPaySheet: false,
-    currentPayOrder: null,
   },
 
   payLock: false,
-  tempRemark: '',
+  noteInfo: [],
+  tempNoteInfo: [],
   onLoad(options) {
     this.setData({
       loading: true,
@@ -72,6 +71,7 @@ Page({
     let { goodsRequestList } = this;
     let { userAddressReq } = this;
 
+    const storeInfoList = [];
     if (options.userAddressReq) {
       userAddressReq = options.userAddressReq;
     }
@@ -79,71 +79,176 @@ Page({
       const goodsRequestListJson = wx.getStorageSync('order.goodsRequestList');
       goodsRequestList = JSON.parse(goodsRequestListJson);
     } else if (typeof options.goodsRequestList === 'string') {
-      goodsRequestList = this.safeParseGoodsList(options.goodsRequestList);
+      goodsRequestList = JSON.parse(options.goodsRequestList);
     }
 
+    const storeMap = {};
+    goodsRequestList.forEach((goods) => {
+      const storeId = goods.storeId || '1';
+      if (!storeMap[storeId]) {
+        storeInfoList.push({ storeId, storeName: goods.storeName || '商城' });
+        storeMap[storeId] = true;
+      }
+    });
     this.goodsRequestList = goodsRequestList;
-    this.userAddressReq = userAddressReq || null;
-    this.setData({ userAddressReq: this.userAddressReq });
+    this.storeInfoList = storeInfoList;
+
+    // 从商品列表中提取订单类型和活动参数（秒杀/拼团从商品详情页带过来）
+    const firstGoods = goodsRequestList[0] || {};
+    const orderType = firstGoods.orderType || this._orderType || 'normal';
+    const activityId = firstGoods.activityId || this._activityId || null;
+    const sessionId = firstGoods.sessionId || this._sessionId || null;
+    const groupBuyId = firstGoods.groupBuyId || this._groupBuyId || (orderType === 'group_buy' ? activityId : null);
+    const groupNo = firstGoods.groupNo || this._groupNo || null;
+    const buyOriginalPrice = firstGoods.buyOriginalPrice || this._buyOriginalPrice || false;
+
+    // 缓存到实例上，刷新预览时保留
+    this._orderType = orderType;
+    this._activityId = activityId;
+    this._sessionId = sessionId;
+    this._groupBuyId = groupBuyId;
+    this._groupNo = groupNo;
+    this._buyOriginalPrice = buyOriginalPrice;
+
+    // 优惠券：后端接受单个 coupon_id
+    let couponId = null;
+    if (couponList && couponList.length > 0) {
+      const first = couponList[0];
+      couponId = first.couponId || first.id || first;
+    } else if (this._selectedCouponId) {
+      couponId = this._selectedCouponId;
+    }
+
     const params = {
-      goodsRequestList,
-      storeInfoList: [],
-      userAddressReq,
-      couponList,
+      goodsRequestList: goodsRequestList.map((g) => ({
+        skuId: g.skuId,
+        quantity: g.quantity,
+      })),
+      storeInfoList,
+      userAddress: userAddressReq,
+      addressId: userAddressReq?.id || null,
+      couponId,
+      orderType,
+      activityId,
+      sessionId,
+      groupBuyId,
+      groupNo,
+      buyOriginalPrice: buyOriginalPrice || undefined,
     };
+
     fetchSettleDetail(params).then(
       (res) => {
-        this.setData({
-          loading: false,
-        });
-        this.initData(res.data);
+        this.setData({ loading: false });
+        // 后端返回的数据可能是 res.data 或直接 res
+        const resData = res?.data || res;
+        this.initData(resData);
       },
-      (error) => {
-        // 接口异常处理
-        this.handleError(error);
+      (err) => {
+        this.setData({ loading: false });
+        const msg = (err && err.msg) || '订单预览失败，请重试';
+        Toast({ context: this, selector: '#t-toast', message: msg, duration: 3000, icon: 'close-circle' });
+        setTimeout(() => { wx.switchTab({ url: '/pages/home/home' }); }, 3000);
       },
     );
   },
-  safeParseGoodsList(goodsRequestListStr) {
-    if (!goodsRequestListStr) {
-      return [];
+  initData(resData) {
+    // 后端返回的结构与前端模板期望的字段不同，这里做映射
+    const price = resData.price || {};
+
+    // 地址字段映射：后端 province/city/district → 前端 provinceName/cityName/districtName
+    let userAddress = resData.userAddress;
+    if (userAddress) {
+      userAddress = {
+        ...userAddress,
+        provinceName: userAddress.provinceName || userAddress.province || '',
+        cityName: userAddress.cityName || userAddress.city || '',
+        districtName: userAddress.districtName || userAddress.district || '',
+        detailAddress: userAddress.detailAddress || userAddress.detail || userAddress.fullAddress || '',
+      };
     }
-    try {
-      return JSON.parse(goodsRequestListStr);
-    } catch (error) {
-      try {
-        return JSON.parse(decodeURIComponent(goodsRequestListStr));
-      } catch (innerError) {
-        console.warn('parse goodsRequestList failed', error, innerError);
-        return [];
+
+    const mapped = {
+      settleType: resData.settleType,
+      userAddress: userAddress,
+      invoiceSupport: resData.invoiceSupport,
+      totalSalePrice: price.goodsAmount || 0,
+      totalDeliveryFee: price.shippingFee || 0,
+      totalPromotionAmount: price.discountAmount || 0,
+      totalCouponAmount: resData.couponAmount || 0,
+      totalAmount: price.totalAmount || 0,
+      totalPayAmount: price.payAmount || 0,
+      totalGoodsCount: resData.goodsCount || 0,
+      // 将 items 包装成 storeGoodsList 结构
+      storeGoodsList: [{
+        storeId: '1',
+        storeName: resData.storeName || '商城',
+        storeTotalPayAmount: price.payAmount || 0,
+        couponList: [],
+        skuDetailVos: (resData.items || []).map((item) => ({
+          skuId: item.skuId,
+          spuId: item.productId,
+          storeId: '1',
+          image: item.productImage,
+          goodsName: item.productName,
+          skuSpecLst: Array.isArray(item.specValues)
+            ? item.specValues.map((sv) => ({
+                specValue: typeof sv === 'string' ? sv : (sv.valueName || sv.specValue || ''),
+              }))
+            : [],
+          settlePrice: item.unitPrice,
+          tagPrice: null,
+          tagText: null,
+          quantity: item.quantity,
+        })),
+      }],
+      // 这些列表后端暂未返回，给空数组兜底
+      outOfStockGoodsList: resData.outOfStockGoodsList || [],
+      abnormalDeliveryGoodsList: resData.abnormalDeliveryGoodsList || [],
+      inValidGoodsList: resData.inValidGoodsList || [],
+      limitGoodsList: resData.limitGoodsList || [],
+    };
+
+    this.userAddressReq = mapped.userAddress;
+    if (mapped.userAddress) {
+      this.setData({ userAddress: mapped.userAddress });
+    }
+
+    const data = this.handleResToGoodsCard(mapped);
+    this.setData({ settleDetailData: data });
+    this.isInvalidOrder(data);
+
+    // 首次加载时自动选最优券
+    if (!this._couponAutoSelected) {
+      this._couponAutoSelected = true;
+      const comp = this.selectComponent('#selectCoupons');
+      if (comp) {
+        comp.loadCoupons(true);
       }
     }
   },
-  initData(resData) {
-    // 转换商品卡片显示数据
-    const data = this.handleResToGoodsCard(resData);
-    this.userAddressReq = resData.userAddress || null;
-    this.setData({ userAddressReq: this.userAddressReq });
-
-    if (resData.userAddress) {
-      this.setData({ userAddress: resData.userAddress });
-    }
-    this.setData({ settleDetailData: data });
-    this.isInvalidOrder(data);
-  },
 
   isInvalidOrder(data) {
+    // 失效 不在配送范围 限购的商品 提示弹窗
+    if (
+      (data.limitGoodsList && data.limitGoodsList.length > 0) ||
+      (data.abnormalDeliveryGoodsList && data.abnormalDeliveryGoodsList.length > 0) ||
+      (data.inValidGoodsList && data.inValidGoodsList.length > 0)
+    ) {
+      this.setData({ popupShow: true });
+      return true;
+    }
+    this.setData({ popupShow: false });
     if (data.settleType === 0) {
       return true;
     }
     return false;
   },
 
-  handleError(error) {
+  handleError() {
     Toast({
       context: this,
       selector: '#t-toast',
-      message: (error && (error.msg || error.message)) || '结算异常, 请稍后重试',
+      message: '结算异常, 请稍后重试',
       duration: 2000,
       icon: '',
     });
@@ -155,19 +260,82 @@ Page({
       loading: false,
     });
   },
+  getRequestGoodsList(storeGoodsList) {
+    const filterStoreGoodsList = [];
+    storeGoodsList &&
+      storeGoodsList.forEach((store) => {
+        const { storeName } = store;
+        store.skuDetailVos &&
+          store.skuDetailVos.forEach((goods) => {
+            const data = goods;
+            data.storeName = storeName;
+            filterStoreGoodsList.push(data);
+          });
+      });
+    return filterStoreGoodsList;
+  },
+  handleGoodsRequest(goods, isOutStock = false) {
+    const { reminderStock, quantity, storeId, uid, saasId, spuId, goodsName, skuId, storeName, roomId } = goods;
+    const resQuantity = isOutStock ? reminderStock : quantity;
+    return {
+      quantity: resQuantity,
+      storeId,
+      uid,
+      saasId,
+      spuId,
+      goodsName,
+      skuId,
+      storeName,
+      roomId,
+    };
+  },
   handleResToGoodsCard(data) {
-    const goodsCardList = (data.items || []).map((item, index) => ({
-      id: index,
-      thumb: item.productImage,
-      title: item.productName,
-      specs: Array.isArray(item.specValues) ? item.specValues.map((s) => s.value || s) : [],
-      price: item.unitPrice || 0,
-      num: item.quantity,
-      skuId: item.skuId,
-      spuId: item.productId,
-    }));
+    // 转换数据 符合 goods-card展示
+    const orderCardList = []; // 订单卡片列表
+    const storeInfoList = [];
+    const submitCouponList = []; //使用优惠券列表;
 
-    this.setData({ goodsCardList });
+    data.storeGoodsList &&
+      data.storeGoodsList.forEach((ele) => {
+        const orderCard = {
+          id: ele.storeId,
+          storeName: ele.storeName,
+          status: 0,
+          statusDesc: '',
+          amount: ele.storeTotalPayAmount,
+          goodsList: [],
+        }; // 订单卡片
+        ele.skuDetailVos.forEach((item, index) => {
+          orderCard.goodsList.push({
+            id: index,
+            thumb: item.image,
+            title: item.goodsName,
+            specs: item.skuSpecLst.map((s) => s.specValue), // 规格列表 string[]
+            price: item.tagPrice || item.settlePrice || '0', // 优先取限时活动价
+            settlePrice: item.settlePrice,
+            titlePrefixTags: item.tagText ? [{ text: item.tagText }] : [],
+            num: item.quantity,
+            skuId: item.skuId,
+            spuId: item.spuId,
+            storeId: item.storeId,
+          });
+        });
+
+        storeInfoList.push({
+          storeId: ele.storeId,
+          storeName: ele.storeName,
+          remark: '',
+        });
+        submitCouponList.push({
+          storeId: ele.storeId,
+          couponList: ele.couponList || [],
+        });
+        this.noteInfo.push('');
+        this.tempNoteInfo.push('');
+        orderCardList.push(orderCard);
+      });
+
+    this.setData({ orderCardList, storeInfoList, submitCouponList });
     return data;
   },
   onGotoAddress() {
@@ -192,14 +360,17 @@ Page({
       url: `/pages/user/address/list/index?selectMode=1&isOrderSure=1${id}`,
     });
   },
-  onNotes() {
+  onNotes(e) {
+    const { storenoteindex: storeNoteIndex } = e.currentTarget.dataset;
     // 添加备注信息
     this.setData({
       dialogShow: true,
+      storeNoteIndex,
     });
   },
   onInput(e) {
-    this.tempRemark = e.detail.value;
+    const { storeNoteIndex } = this.data;
+    this.noteInfo[storeNoteIndex] = e.detail.value;
   },
   onBlur() {
     this.setData({
@@ -218,162 +389,105 @@ Page({
   },
   onNoteConfirm() {
     // 备注信息 确认按钮
-    const remark = this.tempRemark ?? this.data.remark;
+    const { storeInfoList, storeNoteIndex } = this.data;
+    this.tempNoteInfo[storeNoteIndex] = this.noteInfo[storeNoteIndex];
+    storeInfoList[storeNoteIndex].remark = this.noteInfo[storeNoteIndex];
+
     this.setData({
       dialogShow: false,
-      remark,
+      storeInfoList,
     });
   },
   onNoteCancel() {
     // 备注信息 取消按钮
-    this.tempRemark = this.data.remark;
+    const { storeNoteIndex } = this.data;
+    this.noteInfo[storeNoteIndex] = this.tempNoteInfo[storeNoteIndex];
     this.setData({
       dialogShow: false,
     });
   },
 
   onSureCommit() {
-    // 库存不足时重新结算，使用当前商品列表刷新
-    this.handleOptionsParams({ goodsRequestList: this.goodsRequestList });
+    // 商品库存不足继续结算
+    const { settleDetailData } = this.data;
+    const { outOfStockGoodsList, storeGoodsList, inValidGoodsList } = settleDetailData;
+    if ((outOfStockGoodsList && outOfStockGoodsList.length > 0) || (inValidGoodsList && storeGoodsList)) {
+      // 合并正常商品 和 库存 不足商品继续支付
+      // 过滤不必要的参数
+      const filterOutGoodsList = [];
+      outOfStockGoodsList &&
+        outOfStockGoodsList.forEach((outOfStockGoods) => {
+          const { storeName } = outOfStockGoods;
+          outOfStockGoods.unSettlementGoods.forEach((ele) => {
+            const data = ele;
+            data.quantity = ele.reminderStock;
+            data.storeName = storeName;
+            filterOutGoodsList.push(data);
+          });
+        });
+      const filterStoreGoodsList = this.getRequestGoodsList(storeGoodsList);
+      const goodsRequestList = filterOutGoodsList.concat(filterStoreGoodsList);
+      this.handleOptionsParams({ goodsRequestList });
+    }
   },
   // 提交订单
   submitOrder() {
-    const { settleDetailData, invoiceData, remark, submitCouponList } = this.data;
+    const { settleDetailData, invoiceData, storeInfoList } = this.data;
     const { goodsRequestList } = this;
+    const userAddress = settleDetailData.userAddress || this.userAddressReq;
 
-    const addressPayload = settleDetailData.userAddress || this.data.userAddressReq || this.userAddressReq;
-
-    if (!addressPayload) {
-      Toast({
-        context: this,
-        selector: '#t-toast',
-        message: '请添加收货地址',
-        duration: 2000,
-        icon: 'help-circle',
-      });
-
+    if (!userAddress) {
+      Toast({ context: this, selector: '#t-toast', message: '请添加收货地址', duration: 2000, icon: 'help-circle' });
       return;
     }
-    const { price } = settleDetailData;
-    if (this.payLock || !settleDetailData.settleType || !price.goodsAmount) {
+    if (this.payLock || !settleDetailData.settleType || !settleDetailData.totalAmount) {
       return;
     }
     this.payLock = true;
+
+    const couponId = this._selectedCouponId || null;
+
     const params = {
-      userAddressReq: addressPayload,
-      goodsRequestList: goodsRequestList,
-      userName: addressPayload && addressPayload.name ? addressPayload.name : '',
-      totalAmount: price.payAmount,
+      goodsRequestList: goodsRequestList.map((g) => ({ skuId: g.skuId, quantity: g.quantity })),
+      userAddress,
+      addressId: userAddress.id || null,
+      userName: userAddress.name || '',
+      totalAmount: settleDetailData.totalPayAmount,
+      orderType: this._orderType || 'normal',
+      activityId: this._activityId || null,
+      sessionId: this._sessionId || null,
+      groupBuyId: this._groupBuyId || (this._orderType === 'group_buy' ? this._activityId : null),
+      groupNo: this._groupNo || null,
+      buyOriginalPrice: this._buyOriginalPrice || undefined,
+      storeInfoList,
+      couponId,
       invoiceRequest: null,
-      storeInfoList: remark ? [{ remark }] : [],
-      couponList: submitCouponList || [],
     };
     if (invoiceData && invoiceData.email) {
       params.invoiceRequest = invoiceData;
     }
-    commitPay(params).then(
+
+    dispatchCommitPay(params).then(
       (res) => {
         this.payLock = false;
-        const { data } = res;
-        // 提交出现 失效 不在配送范围 限购的商品 提示弹窗
-        if (this.isInvalidOrder(data)) {
+        const tradeNo = res.tradeNo;
+        if (!tradeNo) {
+          Toast({ context: this, selector: '#t-toast', message: '订单提交失败', icon: 'close-circle' });
           return;
         }
-        if (res.code === 'Success') {
-          this.handlePay(data, settleDetailData);
-        } else {
-          Toast({
-            context: this,
-            selector: '#t-toast',
-            message: res.msg || '提交订单超时，请稍后重试',
-            duration: 2000,
-            icon: '',
-          });
-          setTimeout(() => {
-            // 提交支付失败   返回购物车
-            wx.navigateBack();
-          }, 2000);
-        }
+        // 立刻跳转收银台，用 redirectTo 不可后退
+        const payAmount = settleDetailData.totalPayAmount || 0;
+        const methodsStr = encodeURIComponent(JSON.stringify(res.payMethods || []));
+        const status = res.status || 'processing';
+        wx.redirectTo({
+          url: `/pages/order/cashier/index?tradeNo=${tradeNo}&payAmount=${payAmount}&payMethods=${methodsStr}&status=${status}`,
+        });
       },
       (err) => {
         this.payLock = false;
-        if (err.code === 'CONTAINS_INSUFFICIENT_GOODS' || err.code === 'TOTAL_AMOUNT_DIFFERENT') {
-          Toast({
-            context: this,
-            selector: '#t-toast',
-            message: err.msg || '支付异常',
-            duration: 2000,
-            icon: '',
-          });
-          this.init();
-        } else if (err.code === 'ORDER_PAY_FAIL') {
-          Toast({
-            context: this,
-            selector: '#t-toast',
-            message: '支付失败',
-            duration: 2000,
-            icon: 'close-circle',
-          });
-          setTimeout(() => {
-            wx.redirectTo({ url: '/pages/order/order-list/index' });
-          });
-        } else if (err.code === 'ILLEGAL_CONFIG_PARAM') {
-          Toast({
-            context: this,
-            selector: '#t-toast',
-            message: '支付失败，微信支付商户号设置有误，请商家重新检查支付设置。',
-            duration: 2000,
-            icon: 'close-circle',
-          });
-          setTimeout(() => {
-            wx.redirectTo({ url: '/pages/order/order-list/index' });
-          });
-        } else {
-          Toast({
-            context: this,
-            selector: '#t-toast',
-            message: err.msg || '提交支付超时，请稍后重试',
-            duration: 2000,
-            icon: '',
-          });
-          setTimeout(() => {
-            // 提交支付失败  返回购物车
-            wx.navigateBack();
-          }, 2000);
-        }
+        Toast({ context: this, selector: '#t-toast', message: err.msg || '提交订单失败', duration: 2000, icon: 'close-circle' });
       },
     );
-  },
-
-  // 处理支付
-  handlePay(data, settleDetailData) {
-    const { tradeNo, payMethods = [], payAmount } = data;
-    const { price } = settleDetailData;
-    const normalizedPayMethods = Array.isArray(payMethods)
-      ? payMethods.filter((method) => method && method.enabled !== false)
-      : [];
-
-    const payOrderInfo = {
-      orderId: tradeNo,
-      tradeNo,
-      orderAmt: price.goodsAmount,
-      payAmt: payAmount || price.payAmount,
-    };
-
-    this.setData({
-      payMethods: normalizedPayMethods,
-      currentPayOrder: payOrderInfo,
-      showPaySheet: normalizedPayMethods.length > 0,
-    });
-
-    if (normalizedPayMethods.length === 0) {
-      Toast({
-        context: this,
-        selector: '#t-toast',
-        message: '暂无可用支付方式，请稍后再试',
-        duration: 2000,
-      });
-    }
   },
 
   hide() {
@@ -391,102 +505,21 @@ Page({
   },
 
   onCoupons(e) {
-    const { goodsRequestList } = this;
     const { selectedList } = e.detail;
-    // selectedList 是 [{couponId: xxx}, ...] 格式
-    this.setData({ submitCouponList: selectedList || [] });
-    // 确定选择优惠券，重新请求 preview
-    this.handleOptionsParams({ goodsRequestList }, selectedList);
-    this.setData({ couponsShow: false });
+    const couponId = selectedList.length > 0 ? selectedList[0].couponId : null;
+    this._selectedCouponId = couponId;
+    this.setData({ couponsShow: false, selectedCouponId: couponId });
+    // 重新预览订单
+    const { goodsRequestList } = this;
+    this.handleOptionsParams({ goodsRequestList }, couponId ? [{ couponId }] : null);
   },
+
   onOpenCoupons() {
-    const { submitCouponList } = this.data;
-    const selectedCouponIds = (submitCouponList || []).map((c) => String(c.couponId || c.coupon_id || ''));
-    this.setData({
-      couponsShow: true,
-      selectedCouponIds,
-    });
+    this.setData({ couponsShow: true });
   },
 
-  handleCouponList(couponList) {
-    if (!couponList) return [];
-    return couponList;
-  },
-
-  onSelectPayMethod(e) {
-    const { index } = e.currentTarget?.dataset || {};
-    const { currentPayOrder, payMethods } = this.data;
-    if (index === undefined || !currentPayOrder) {
-      this.setData({ showPaySheet: false });
-      return;
-    }
-    const methodIndex = Number(index);
-    const method = payMethods[methodIndex];
-    if (!method) {
-      this.setData({ showPaySheet: false });
-      return;
-    }
-    const { channel, name } = method;
-    const displayName = name || channel || '该支付方式';
-
-    wx.showLoading({ title: '请求支付', mask: true });
-    requestOrderPayment({
-      orderNo: currentPayOrder.tradeNo,
-      payMethod: channel,
-    })
-      .then((resp) => {
-        if (channel === 'wechat') {
-          if (!resp.payInfo) {
-            Toast({
-              context: this,
-              selector: '#t-toast',
-              message: '支付参数为空，请稍后再试',
-              theme: 'warning',
-              duration: 1800,
-            });
-            return;
-          }
-          this.setData({ showPaySheet: false });
-          wechatPayOrder(this, {
-            ...currentPayOrder,
-            payInfo: resp.payInfo,
-          });
-          return;
-        }
-
-        if (channel === 'balance' && resp.isPaid === true) {
-          this.setData({ showPaySheet: false });
-          paySuccess(this, {
-            ...currentPayOrder,
-            payAmt: resp.payAmount || currentPayOrder.payAmt,
-          });
-          return;
-        }
-
-        Toast({
-          context: this,
-          selector: '#t-toast',
-          message: `暂未接入${displayName}支付，请稍后重试`,
-          theme: 'warning',
-          duration: 1800,
-        });
-      })
-      .catch((err) => {
-        Toast({
-          context: this,
-          selector: '#t-toast',
-          message: err?.msg || err?.message || '支付失败，请稍后重试',
-          theme: 'warning',
-          duration: 2000,
-        });
-      })
-      .finally(() => {
-        wx.hideLoading();
-      });
-  },
-
-  closePaySheet() {
-    this.setData({ showPaySheet: false });
+  onCloseCoupons() {
+    this.setData({ couponsShow: false });
   },
 
   onGoodsNumChange(e) {
@@ -497,9 +530,10 @@ Page({
       },
     } = e;
     const index = this.goodsRequestList.findIndex(
-      ({ skuId }) => goods.skuId === skuId,
+      ({ storeId, spuId, skuId }) => goods.storeId === storeId && goods.spuId === spuId && goods.skuId === skuId,
     );
     if (index >= 0) {
+      // eslint-disable-next-line no-confusing-arrow
       const goodsRequestList = this.goodsRequestList.map((item, i) =>
         i === index ? { ...item, quantity: value } : item,
       );

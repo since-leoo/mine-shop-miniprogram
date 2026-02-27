@@ -11,7 +11,6 @@ Component({
     order: {
       type: Object,
       observer(order) {
-        // 判定有传goodsIndex ，则认为是商品button bar, 仅显示申请售后按钮
         if (this.properties?.goodsIndex !== null) {
           const goods = order.goodsList[Number(this.properties.goodsIndex)];
           this.setData({
@@ -22,9 +21,7 @@ Component({
           });
           return;
         }
-        // 订单的button bar 不显示申请售后按钮
         const buttonsRight = (order.buttons || []).map((button) => {
-          //邀请好友拼团按钮
           if (button.type === OrderButtonTypes.INVITE_GROUPON && order.groupInfoVo) {
             const {
               groupInfoVo: { groupId, promotionId, remainMember, groupPrice },
@@ -35,30 +32,18 @@ Component({
             return {
               ...button,
               openType: 'share',
-              dataShare: {
-                goodsImg,
-                goodsName,
-                groupId,
-                promotionId,
-                remainMember,
-                groupPrice,
-                storeId: order.storeId,
-              },
+              dataShare: { goodsImg, goodsName, groupId, promotionId, remainMember, groupPrice, storeId: order.storeId },
             };
           }
           return button;
         });
-        // 删除订单按钮单独挪到左侧
         const deleteBtnIndex = buttonsRight.findIndex((b) => b.type === OrderButtonTypes.DELETE);
         let buttonsLeft = [];
         if (deleteBtnIndex > -1) {
           buttonsLeft = buttonsRight.splice(deleteBtnIndex, 1);
         }
         this.setData({
-          buttons: {
-            left: buttonsLeft,
-            right: buttonsRight,
-          },
+          buttons: { left: buttonsLeft, right: buttonsRight },
         });
       },
     },
@@ -73,14 +58,10 @@ Component({
   },
 
   data: {
-    buttons: {
-      left: [],
-      right: [],
-    },
+    buttons: { left: [], right: [] },
   },
 
   methods: {
-    // 点击【订单操作】按钮，根据按钮类型分发
     onOrderBtnTap(e) {
       const { type } = e.currentTarget.dataset;
       switch (type) {
@@ -109,7 +90,6 @@ Component({
           this.onDelivery(this.data.order);
           break;
         case OrderButtonTypes.INVITE_GROUPON:
-          //分享邀请好友拼团
           break;
         case OrderButtonTypes.REBUY:
           this.onBuyAgain(this.data.order);
@@ -127,21 +107,11 @@ Component({
         .then(() => {
           cancelOrder(order.orderNo)
             .then(() => {
-              Toast({
-                context: this,
-                selector: '#t-toast',
-                message: '订单已取消',
-                icon: 'check-circle',
-              });
+              Toast({ context: this, selector: '#t-toast', message: '订单已取消', icon: 'check-circle' });
               this.triggerEvent('refresh');
             })
             .catch((err) => {
-              Toast({
-                context: this,
-                selector: '#t-toast',
-                message: err.msg || '取消失败',
-                icon: 'close-circle',
-              });
+              Toast({ context: this, selector: '#t-toast', message: err.msg || '取消失败', icon: 'close-circle' });
             });
         })
         .catch(() => {});
@@ -157,48 +127,39 @@ Component({
         .then(() => {
           confirmReceipt(order.orderNo)
             .then(() => {
-              Toast({
-                context: this,
-                selector: '#t-toast',
-                message: '已确认收货',
-                icon: 'check-circle',
-              });
+              Toast({ context: this, selector: '#t-toast', message: '已确认收货', icon: 'check-circle' });
               this.triggerEvent('refresh');
             })
             .catch((err) => {
-              Toast({
-                context: this,
-                selector: '#t-toast',
-                message: err.msg || '操作失败',
-                icon: 'close-circle',
-              });
+              Toast({ context: this, selector: '#t-toast', message: err.msg || '操作失败', icon: 'close-circle' });
             });
         })
         .catch(() => {});
     },
 
     onPay(order) {
-      wx.navigateTo({
-        url: `/pages/order/order-confirm/index?orderNo=${order.orderNo}`,
-      });
+      this.triggerEvent('pay', { orderNo: order.orderNo, amount: order.amount, totalAmount: order.totalAmount });
+    },
+
+    onDelete(order) {
+      Dialog.confirm({
+        title: '确认删除订单？',
+        content: '删除后将无法恢复',
+        confirmBtn: '确认删除',
+        cancelBtn: '取消',
+      })
+        .then(() => {
+          Toast({ context: this, selector: '#t-toast', message: '删除功能开发中', icon: '' });
+        })
+        .catch(() => {});
     },
 
     onBuyAgain() {
-      Toast({
-        context: this,
-        selector: '#t-toast',
-        message: '你点击了再次购买',
-        icon: 'check-circle',
-      });
+      Toast({ context: this, selector: '#t-toast', message: '再次购买功能开发中', icon: '' });
     },
 
-    onDelivery(order) {
-      Toast({
-        context: this,
-        selector: '#t-toast',
-        message: '你点击了查看物流',
-        icon: 'check-circle',
-      });
+    onDelivery() {
+      Toast({ context: this, selector: '#t-toast', message: '查看物流功能开发中', icon: '' });
     },
 
     onApplyRefund(order) {
@@ -223,15 +184,9 @@ Component({
     },
 
     onViewRefund() {
-      Toast({
-        context: this,
-        selector: '#t-toast',
-        message: '你点击了查看退款',
-        icon: '',
-      });
+      Toast({ context: this, selector: '#t-toast', message: '查看退款功能开发中', icon: '' });
     },
 
-    /** 添加订单评论 */
     onAddComment(order) {
       const imgUrl = order?.goodsList?.[0]?.thumb;
       const title = order?.goodsList?.[0]?.title;

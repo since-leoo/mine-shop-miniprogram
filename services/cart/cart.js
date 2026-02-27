@@ -14,7 +14,7 @@ export function fetchCartGroupData(params) {
     return mockFetchCartGroupData(params);
   }
   return request({ url: '/api/v1/cart', method: 'GET', needAuth: true }).then((data = {}) => {
-    return { data: transformCartResponse(data) };
+    return { data: attachCartSummary(data) };
   });
 }
 
@@ -29,7 +29,7 @@ export function addCartItem({ skuId, quantity }) {
     method: 'POST',
     data: { sku_id: skuId, quantity },
     needAuth: true,
-  }).then((data = {}) => ({ data: transformCartResponse(data) }));
+  }).then((data = {}) => ({ data: attachCartSummary(data) }));
 }
 
 /** 更新购物车商品数量 */
@@ -38,13 +38,12 @@ export function updateCartItem(skuId, { quantity }) {
     const { delay } = require('../_utils/delay');
     return delay(100).then(() => ({ data: {} }));
   }
-
   return request({
     url: `/api/v1/cart/items/${skuId}`,
     method: 'PUT',
     data: { quantity },
     needAuth: true,
-  }).then((data = {}) => ({ data: transformCartResponse(data) }));
+  }).then((data = {}) => ({ data: attachCartSummary(data) }));
 }
 
 /** 删除购物车商品 */
@@ -57,7 +56,7 @@ export function deleteCartItem(skuId) {
     url: `/api/v1/cart/items/${skuId}`,
     method: 'DELETE',
     needAuth: true,
-  }).then((data = {}) => ({ data: transformCartResponse(data) }));
+  }).then((data = {}) => ({ data: attachCartSummary(data) }));
 }
 
 /** 清空失效商品 */
@@ -70,110 +69,13 @@ export function clearInvalidCartItems() {
     url: '/api/v1/cart/clear-invalid',
     method: 'POST',
     needAuth: true,
-  }).then((data = {}) => ({ data: transformCartResponse(data) }));
+  }).then((data = {}) => ({ data: attachCartSummary(data) }));
 }
 
-// ========== 数据转换 ==========
-
-function transformCartResponse(payload) {
-  const storeGoods = Array.isArray(payload?.store_goods)
-    ? payload.store_goods.map(transformStore)
-    : [];
-  const invalidGoodItems = Array.isArray(payload?.invalid_items)
-    ? payload.invalid_items.map(transformGoods)
-    : [];
-
-  const result = {
-    isNotEmpty: !!payload?.is_not_empty,
-    storeGoods,
-    invalidGoodItems,
-  };
-
-  return attachCartSummary(result);
-}
-
-function transformStore(store) {
-  const promotionGoodsList = Array.isArray(store?.promotion_goods_list)
-    ? store.promotion_goods_list.map(transformPromotion)
-    : [];
-  const shortageGoodsList = Array.isArray(store?.shortage_goods_list)
-    ? store.shortage_goods_list.map(transformGoods)
-    : [];
-
-  return {
-    storeId: store?.store_id || '1',
-    storeName: store?.store_name || '',
-    storeStatus: store?.store_status ?? 1,
-    totalDiscountSalePrice: store?.total_discount_sale_price || '0',
-    promotionGoodsList,
-    shortageGoodsList,
-  };
-}
-
-function transformPromotion(promotion) {
-  return {
-    title: promotion?.title || '',
-    promotionCode: promotion?.promotion_code || '',
-    promotionSubCode: promotion?.promotion_sub_code || '',
-    promotionId: promotion?.promotion_id || null,
-    tagText: promotion?.tag_text || [],
-    promotionStatus: promotion?.promotion_status ?? 0,
-    tag: promotion?.tag || '',
-    description: promotion?.description || '',
-    doorSillRemain: promotion?.door_sill_remain ?? null,
-    isNeedAddOnShop: promotion?.is_need_add_on_shop ?? 0,
-    goodsPromotionList: Array.isArray(promotion?.goods_list)
-      ? promotion.goods_list.map(transformGoods)
-      : [],
-    lastJoinTime: promotion?.last_join_time || null,
-  };
-}
-
-function transformGoods(goods) {
-  const quantity = Number(goods?.quantity || 0);
-  const stockQuantity = Number(goods?.stock_quantity || 0);
-  const shortageStock = stockQuantity > 0 ? quantity > stockQuantity : true;
-
-  return {
-    cartId: goods?.cart_id || '',
-    uid: goods?.uid || '',
-    saasId: goods?.saas_id || '',
-    storeId: goods?.store_id || '',
-    storeName: goods?.store_name || '',
-    spuId: goods?.spu_id || '',
-    skuId: goods?.sku_id || '',
-    isSelected: 1,
-    thumb: goods?.thumb || goods?.primary_image || '',
-    title: goods?.title || '',
-    primaryImage: goods?.primary_image || goods?.thumb || '',
-    quantity,
-    stockStatus: !!goods?.stock_status,
-    stockQuantity,
-    price: goods?.price || '0',
-    originPrice: goods?.origin_price || '0',
-    tagPrice: goods?.tag_price || null,
-    titlePrefixTags: goods?.title_prefix_tags || [],
-    roomId: goods?.room_id || null,
-    specInfo: normalizeSpecInfo(goods?.spec_info),
-    joinCartTime: goods?.join_cart_time || null,
-    available: goods?.available ?? 1,
-    putOnSale: goods?.put_on_sale ?? 1,
-    etitle: goods?.etitle || null,
-    shortageStock,
-  };
-}
-
-function normalizeSpecInfo(specInfo) {
-  if (!Array.isArray(specInfo)) {
-    return [];
-  }
-  return specInfo.map((spec) => ({
-    specTitle: spec?.spec_title || spec?.specTitle || '',
-    specValue: spec?.spec_value || spec?.specValue || '',
-  }));
-}
+// ========== 购物车汇总计算 ==========
 
 function attachCartSummary(cart) {
+  if (!cart || typeof cart !== 'object') return cart;
   const stores = cart.storeGoods || [];
   const goods = [];
 
@@ -184,10 +86,7 @@ function attachCartSummary(cart) {
   });
 
   const selectedGoods = goods.filter((item) => item.isSelected);
-  const selectedGoodsCount = selectedGoods.reduce((sum, item) => {
-    return sum + (item.quantity || 0);
-  }, 0);
-
+  const selectedGoodsCount = selectedGoods.reduce((sum, item) => sum + (item.quantity || 0), 0);
   const totalAmount = selectedGoods.reduce((sum, item) => {
     const price = parseInt(item.price || '0', 10) || 0;
     return sum + price * (item.quantity || 0);

@@ -1,4 +1,8 @@
 Component({
+  externalClasses: ['title-class', 'icon-class', 'number-class'],
+  options: {
+    multipleSlots: true,
+  },
   properties: {
     orderTagInfos: {
       type: Array,
@@ -12,6 +16,10 @@ Component({
       type: String,
       value: '全部订单',
     },
+    isTop: {
+      type: Boolean,
+      value: true,
+    },
     classPrefix: {
       type: String,
       value: 'wr',
@@ -21,6 +29,7 @@ Component({
     onClickItem(e) {
       this.triggerEvent('onClickItem', e.currentTarget.dataset.item);
     },
+
     onClickTop() {
       this.triggerEvent('onClickTop', {});
     },

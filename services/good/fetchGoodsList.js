@@ -2,67 +2,52 @@
 import { config } from '../../config/index';
 import { request } from '../request';
 
-/** 获取商品列表 */
+/** 获取商品列表 (mock) */
 function mockFetchGoodsList(params) {
   const { delay } = require('../_utils/delay');
   const { getSearchResult } = require('../../model/search');
 
   const data = getSearchResult(params);
-
   if (data.spuList.length) {
     data.spuList.forEach((item) => {
-      item.spuId = item.spuId;
       item.thumb = item.primaryImage;
-      item.title = item.title;
       item.price = item.minSalePrice;
       item.originPrice = item.maxLinePrice;
       item.desc = '';
-      if (item.spuTagList) {
-        item.tags = item.spuTagList.map((tag) => tag.title);
-      } else {
-        item.tags = [];
-      }
+      item.tags = item.spuTagList ? item.spuTagList.map((tag) => tag.title) : [];
     });
   }
-  return delay().then(() => {
-    return data;
-  });
+  return delay().then(() => data);
 }
 
 /** 获取商品列表 */
-export function fetchGoodsList(params = {}) {
+export function fetchGoodsList(params) {
   if (config.useMock) {
     return mockFetchGoodsList(params);
   }
-
-  const query = {
-    page: params.pageNum || 1,
-    page_size: params.pageSize || 30,
-    status: 'active',
-  };
-
-  if (params.keyword) {
-    query.keyword = params.keyword;
-  }
-  if (params.categoryId) {
-    query.category_id = Number(params.categoryId);
-  }
-  if (typeof params.rawMinPrice === 'number' && !Number.isNaN(params.rawMinPrice)) {
-    query.min_price = params.rawMinPrice;
-  }
-  if (typeof params.rawMaxPrice === 'number' && !Number.isNaN(params.rawMaxPrice)) {
-    query.max_price = params.rawMaxPrice;
-  }
-
+  const { pageNum = 1, pageSize = 20, keyword, categoryId, sort } = params || {};
   return request({
     url: '/api/v1/products',
     method: 'GET',
-    data: query,
+    data: {
+      page: pageNum,
+      page_size: pageSize,
+      keyword: keyword || undefined,
+      category_id: categoryId || undefined,
+      sort: sort || undefined,
+      status: 'active',
+    },
   }).then((res = {}) => {
-    const list = Array.isArray(res.list) ? res.list : [];
+    const list = (res.list || []).map((item) => ({
+      ...item,
+      thumb: item.thumb || item.primaryImage,
+      price: item.price || item.minSalePrice,
+      originPrice: item.originPrice || item.maxLinePrice,
+      tags: item.tags || [],
+    }));
     return {
       spuList: list,
-      totalCount: res.total || 0,
+      totalCount: res.pagination?.total || list.length,
     };
   });
 }
