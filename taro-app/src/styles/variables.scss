@@ -1,0 +1,119 @@
+// 温馨商城设计系统变量 - 匹配 design-mockup.html 设计稿
+
+// === 品牌色 ===
+$warm-primary: #E8836B;           // 珊瑚色 - 主色
+$warm-primary-light: #F2A99A;     // 浅珊瑚
+$warm-primary-dark: #D4654D;      // 深珊瑚
+$warm-secondary: #F5C5A3;         // 暖杏色 - 次色
+$warm-accent-mint: #7EB8A2;       // 薄荷绿 - 辅助色
+$warm-accent-mint-light: #B5DDD0; // 浅薄荷
+$warm-accent-mint-dark: #5A9A84;  // 深薄荷
+$warm-warm-yellow: #F5D89A;       // 暖黄
+$warm-warm-pink: #F7B8B8;         // 暖粉
+
+// === 背景色 ===
+$warm-bg-cream: #FFF8F3;          // 奶油色背景
+$warm-bg-warm: #FFF1E8;           // 暖色背景
+$warm-bg-section: #FFF5EE;        // 区块背景
+$warm-bg-page: #FAF3ED;           // 页面背景
+$warm-bg-warm-gray: #FAF3ED;      // 暖灰背景 (同 bg-page)
+$warm-bg-white: #FFFFFF;          // 白色背景
+$warm-bg-card: #FFFFFF;           // 卡片背景
+
+// === 文字色 ===
+$warm-text-primary: #4A3228;      // 深棕 - 主文字
+$warm-text-body: #6B5248;         // 棕色 - 正文
+$warm-text-secondary: #6B5248;    // 棕色 - 副文字 (同 body)
+$warm-text-muted: #A89088;        // 灰棕 - 弱文字
+$warm-text-hint: #A89088;         // 灰棕 - 提示文字 (同 muted)
+$warm-text-light: #C4B0A6;        // 浅棕 - 最弱文字
+$warm-text-white: #FFFFFF;        // 白色文字
+
+// === 功能色 ===
+$warm-success: #7EB8A2;           // 成功 - 薄荷绿
+$warm-warning: #F5C078;           // 警告 - 暖黄
+$warm-error: #E8836B;             // 错误 - 珊瑚色
+$warm-info: #89B8D6;              // 信息 - 天蓝
+
+// === 边框 & 分割线 ===
+$warm-border: #F0DDD4;            // 暖边框
+$warm-border-light: #F8EDE5;      // 浅边框
+$warm-divider: #F5E8DF;           // 分割线
+
+// === 圆角 ===
+$warm-radius-xs: 6rpx;            // 超小圆角
+$warm-radius-sm: 10rpx;           // 小圆角
+$warm-radius-md: 16rpx;           // 中圆角 (--radius)
+$warm-radius-lg: 24rpx;           // 大圆角 (--radius-lg)
+$warm-radius-xl: 32rpx;           // 超大圆角
+$warm-radius-round: 999rpx;       // 全圆
+
+// === 阴影 ===
+$warm-shadow-sm: 0 2rpx 8rpx rgba(200, 140, 110, 0.08);
+$warm-shadow-md: 0 4rpx 16rpx rgba(200, 140, 110, 0.12);
+$warm-shadow-lg: 0 8rpx 30rpx rgba(200, 140, 110, 0.16);
+
+// === 渐变 ===
+$warm-gradient-primary: linear-gradient(135deg, #FDDCC8 0%, #F2A99A 50%, #E8836B 100%);
+$warm-gradient-header: linear-gradient(180deg, #E8836B 0%, #F2A99A 40%, #F5C5A3 70%, #FAF3ED 100%);
+$warm-gradient-soft: linear-gradient(180deg, #FFF1E8 0%, #FFF8F3 100%);
+$warm-gradient-mint: linear-gradient(135deg, #B5DDD0 0%, #7EB8A2 100%);
+
+// === 间距 ===
+$warm-spacing-xs: 8rpx;
+$warm-spacing-sm: 16rpx;
+$warm-spacing-md: 24rpx;
+$warm-spacing-lg: 32rpx;
+$warm-spacing-xl: 48rpx;
+
+// === 字体大小 ===
+$warm-font-xs: 20rpx;             // 小标签
+$warm-font-sm: 24rpx;             // 辅助文字
+$warm-font-md: 28rpx;             // 商品名/正文
+$warm-font-lg: 30rpx;             // 区块标题 Bold
+$warm-font-xl: 36rpx;             // 大标题 Bold
+$warm-font-xxl: 44rpx;
+
+// === CSS 变量映射（供组件直接使用）===
+:root {
+  --warm-primary: #{$warm-primary};
+  --warm-primary-light: #{$warm-primary-light};
+  --warm-primary-dark: #{$warm-primary-dark};
+  --warm-secondary: #{$warm-secondary};
+  --warm-accent-mint: #{$warm-accent-mint};
+  --warm-accent-mint-light: #{$warm-accent-mint-light};
+  --warm-accent-mint-dark: #{$warm-accent-mint-dark};
+  --warm-warm-yellow: #{$warm-warm-yellow};
+  --warm-warm-pink: #{$warm-warm-pink};
+
+  --warm-bg-cream: #{$warm-bg-cream};
+  --warm-bg-warm: #{$warm-bg-warm};
+  --warm-bg-section: #{$warm-bg-section};
+  --warm-bg-page: #{$warm-bg-page};
+  --warm-bg-white: #{$warm-bg-white};
+  --warm-bg-card: #{$warm-bg-card};
+
+  --warm-text-primary: #{$warm-text-primary};
+  --warm-text-body: #{$warm-text-body};
+  --warm-text-secondary: #{$warm-text-secondary};
+  --warm-text-muted: #{$warm-text-muted};
+  --warm-text-hint: #{$warm-text-hint};
+  --warm-text-light: #{$warm-text-light};
+  --warm-text-white: #{$warm-text-white};
+
+  --warm-success: #{$warm-success};
+  --warm-warning: #{$warm-warning};
+  --warm-error: #{$warm-error};
+  --warm-info: #{$warm-info};
+
+  --warm-border: #{$warm-border};
+  --warm-border-light: #{$warm-border-light};
+  --warm-divider: #{$warm-divider};
+
+  --warm-radius-xs: #{$warm-radius-xs};
+  --warm-radius-sm: #{$warm-radius-sm};
+  --warm-radius-md: #{$warm-radius-md};
+  --warm-radius-lg: #{$warm-radius-lg};
+  --warm-radius-xl: #{$warm-radius-xl};
+  --warm-radius-round: #{$warm-radius-round};
+}

@@ -1,0 +1,320 @@
+@import '../../../styles/variables.scss';
+
+.order-detail {
+  min-height: 100vh;
+  background: $warm-bg-page;
+  padding-bottom: 120rpx;
+
+  &--loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  &__loading-text {
+    color: $warm-text-secondary;
+    font-size: $warm-font-md;
+  }
+
+  // Status header
+  &__header {
+    background: $warm-gradient-header;
+    padding: $warm-spacing-xl $warm-spacing-lg;
+    padding-top: $warm-spacing-xl;
+  }
+
+  &__status {
+    font-size: $warm-font-xl;
+    font-weight: bold;
+    color: $warm-text-white;
+  }
+
+  // Logistics entry
+  &__logistics {
+    margin: $warm-spacing-md;
+    background: $warm-bg-white;
+    border-radius: $warm-radius-lg;
+    padding: $warm-spacing-lg;
+    display: flex;
+    align-items: center;
+    box-shadow: $warm-shadow-sm;
+  }
+
+  &__logistics-icon {
+    font-size: 36rpx;
+    margin-right: $warm-spacing-sm;
+  }
+
+  &__logistics-text {
+    flex: 1;
+    font-size: $warm-font-md;
+    color: $warm-text-primary;
+  }
+
+  &__logistics-arrow {
+    font-size: 32rpx;
+    color: $warm-text-hint;
+  }
+
+  // Address
+  &__address {
+    margin: $warm-spacing-md;
+    background: $warm-bg-white;
+    border-radius: $warm-radius-lg;
+    padding: $warm-spacing-lg;
+    display: flex;
+    box-shadow: $warm-shadow-sm;
+  }
+
+  &__address-icon {
+    font-size: 36rpx;
+    margin-right: $warm-spacing-sm;
+    flex-shrink: 0;
+  }
+
+  &__address-info {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  &__address-user {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8rpx;
+  }
+
+  &__address-name {
+    font-size: $warm-font-md;
+    font-weight: bold;
+    color: $warm-text-primary;
+    margin-right: $warm-spacing-md;
+  }
+
+  &__address-phone {
+    font-size: $warm-font-sm;
+    color: $warm-text-secondary;
+  }
+
+  &__address-detail {
+    font-size: $warm-font-sm;
+    color: $warm-text-secondary;
+  }
+
+  // Goods card
+  &__goods-card {
+    margin: $warm-spacing-md;
+    background: $warm-bg-white;
+    border-radius: $warm-radius-lg;
+    padding: $warm-spacing-lg;
+    box-shadow: $warm-shadow-sm;
+  }
+
+  &__goods {
+    display: flex;
+    padding: $warm-spacing-sm 0;
+
+    & + & {
+      border-top: 1rpx solid $warm-divider;
+    }
+  }
+
+  &__goods-img {
+    width: 160rpx;
+    height: 160rpx;
+    border-radius: $warm-radius-md;
+    flex-shrink: 0;
+  }
+
+  &__goods-info {
+    flex: 1;
+    margin: 0 $warm-spacing-sm;
+    overflow: hidden;
+  }
+
+  &__goods-title {
+    font-size: $warm-font-md;
+    color: $warm-text-primary;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.4;
+  }
+
+  &__goods-specs {
+    font-size: $warm-font-sm;
+    color: $warm-text-hint;
+    margin-top: 8rpx;
+  }
+
+  &__goods-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+  }
+
+  &__goods-price {
+    font-weight: bold;
+    color: $warm-text-primary;
+  }
+
+  &__goods-num {
+    font-size: $warm-font-sm;
+    color: $warm-text-hint;
+    margin-top: 8rpx;
+  }
+
+  // Price section
+  &__price-section {
+    margin-top: $warm-spacing-md;
+    padding-top: $warm-spacing-md;
+    border-top: 1rpx solid $warm-divider;
+  }
+
+  &__price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $warm-spacing-xs 0;
+
+    &--total {
+      margin-top: $warm-spacing-sm;
+      padding-top: $warm-spacing-sm;
+      border-top: 1rpx solid $warm-divider;
+    }
+  }
+
+  &__price-label {
+    font-size: $warm-font-md;
+    color: $warm-text-secondary;
+  }
+
+  &__price-value {
+    font-size: $warm-font-md;
+    color: $warm-text-primary;
+    font-weight: bold;
+
+    &--free {
+      color: $warm-success;
+      font-weight: normal;
+    }
+
+    &--discount {
+      color: $warm-primary;
+    }
+  }
+
+  &__price-value-row {
+    display: flex;
+    align-items: center;
+  }
+
+  &__price-discount {
+    color: $warm-primary;
+    margin-right: 4rpx;
+  }
+
+  &__price-total {
+    color: $warm-primary;
+    font-weight: bold;
+    font-size: $warm-font-lg;
+  }
+
+  // Info card
+  &__info-card {
+    margin: $warm-spacing-md;
+    background: $warm-bg-white;
+    border-radius: $warm-radius-lg;
+    padding: $warm-spacing-lg;
+    box-shadow: $warm-shadow-sm;
+  }
+
+  &__info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $warm-spacing-sm 0;
+
+    & + & {
+      border-top: 1rpx solid $warm-divider;
+    }
+  }
+
+  &__info-label {
+    font-size: $warm-font-md;
+    color: $warm-text-secondary;
+    flex-shrink: 0;
+  }
+
+  &__info-value-row {
+    display: flex;
+    align-items: center;
+  }
+
+  &__info-value {
+    font-size: $warm-font-md;
+    color: $warm-text-primary;
+  }
+
+  &__info-copy {
+    font-size: $warm-font-sm;
+    color: $warm-primary;
+    margin-left: $warm-spacing-sm;
+    padding: 4rpx 16rpx;
+    border: 1rpx solid $warm-primary;
+    border-radius: $warm-radius-sm;
+  }
+
+  // Bottom spacer & bar
+  &__bottom-spacer {
+    height: 140rpx;
+  }
+
+  &__bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 110rpx;
+    background: $warm-bg-white;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 $warm-spacing-lg;
+    gap: $warm-spacing-sm;
+    box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+    z-index: 100;
+  }
+
+  &__btn {
+    height: 72rpx;
+    padding: 0 $warm-spacing-xl;
+    border-radius: $warm-radius-round;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &--primary {
+      background: $warm-gradient-primary;
+    }
+
+    &--outline {
+      border: 2rpx solid $warm-border;
+      background: $warm-bg-white;
+    }
+  }
+
+  &__btn-text {
+    font-size: $warm-font-md;
+
+    &--primary {
+      color: $warm-text-white;
+      font-weight: bold;
+    }
+
+    &--outline {
+      color: $warm-text-secondary;
+    }
+  }
+}

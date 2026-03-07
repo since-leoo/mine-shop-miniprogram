@@ -9,7 +9,10 @@
       "Bash(done)",
       "Bash(for f in D:/PhpstormProjects/mine-shop-miniprogram/services/cart/*.js D:/PhpstormProjects/mine-shop-miniprogram/services/order/*.js D:/PhpstormProjects/mine-shop-miniprogram/services/address/*.js D:/PhpstormProjects/mine-shop-miniprogram/services/activity/*.js D:/PhpstormProjects/mine-shop-miniprogram/services/comments/*.js D:/PhpstormProjects/mine-shop-miniprogram/services/coupon/*.js D:/PhpstormProjects/mine-shop-miniprogram/services/promotion/*.js D:/PhpstormProjects/mine-shop-miniprogram/services/usercenter/*.js)",
       "Bash(for d in Price GoodsCard GoodsList LoadMore FilterPopup)",
-      "Read(//d/PhpstormProjects/mine-shop-miniprogram/taro-app/src/components/**)"
+      "Read(//d/PhpstormProjects/mine-shop-miniprogram/taro-app/src/components/**)",
+      "Bash(node:*)",
+      "Bash(python3:*)",
+      "Bash(src/custom-tab-bar/index.tsx:*)"
     ]
   }
 }

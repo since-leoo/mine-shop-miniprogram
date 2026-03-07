@@ -1,0 +1,129 @@
+@import '../../../styles/variables.scss';
+
+.promotion-detail {
+  min-height: 100vh;
+  background-color: $warm-bg-page;
+
+  &__banner-wrap {
+    position: relative;
+  }
+
+  &__banner-img {
+    width: 100%;
+    height: 360rpx;
+    display: block;
+  }
+
+  &__countdown-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $warm-spacing-md $warm-spacing-md;
+    background: $warm-bg-white;
+    margin: 0 $warm-spacing-md;
+    border-radius: $warm-radius-lg;
+    margin-top: -40rpx;
+    position: relative;
+    z-index: 1;
+    box-shadow: $warm-shadow-sm;
+  }
+
+  &__status-row {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    gap: $warm-spacing-xs;
+  }
+
+  &__status-badge {
+    padding: 4rpx 16rpx;
+    border-radius: $warm-radius-round;
+    margin-right: $warm-spacing-xs;
+
+    &--finish {
+      background: $warm-text-hint;
+    }
+
+    &--before {
+      background: $warm-warning;
+    }
+  }
+
+  &__status-badge-text {
+    font-size: $warm-font-xs;
+    color: $warm-text-white;
+  }
+
+  &__cd-label {
+    font-size: $warm-font-sm;
+    color: $warm-text-secondary;
+    margin-right: $warm-spacing-xs;
+  }
+
+  &__cd-blocks {
+    display: flex;
+    align-items: center;
+  }
+
+  &__cd-day {
+    font-size: $warm-font-sm;
+    color: $warm-primary;
+    font-weight: bold;
+    margin-right: 4rpx;
+  }
+
+  &__cd-block {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44rpx;
+    height: 44rpx;
+    background: $warm-primary;
+    color: $warm-text-white;
+    border-radius: $warm-radius-sm;
+    font-size: $warm-font-sm;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  &__cd-sep {
+    margin: 0 4rpx;
+    font-size: $warm-font-sm;
+    font-weight: bold;
+    color: $warm-primary;
+  }
+
+  &__rules-entry {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: $warm-spacing-sm;
+  }
+
+  &__rules-label {
+    font-size: $warm-font-sm;
+    color: $warm-text-hint;
+  }
+
+  &__rules-arrow {
+    font-size: $warm-font-lg;
+    color: $warm-text-hint;
+    margin-left: 4rpx;
+  }
+
+  &__state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 120rpx 0;
+  }
+
+  &__state-text {
+    font-size: $warm-font-md;
+    color: $warm-text-hint;
+  }
+
+  &__goods {
+    padding: $warm-spacing-md;
+  }
+}
