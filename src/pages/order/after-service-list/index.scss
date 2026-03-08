@@ -1,0 +1,118 @@
+@import '../../../styles/variables';
+
+.after-service-list {
+  min-height: 100vh;
+  background: $warm-bg-page;
+  padding: $warm-spacing-lg;
+
+  &--loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  &__loading-text {
+    color: $warm-text-secondary;
+    font-size: $warm-font-md;
+  }
+
+  &__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 200rpx 0;
+  }
+
+  &__empty-icon {
+    width: 80rpx;
+    height: 80rpx;
+    font-size: 64rpx;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: $warm-spacing-md;
+  }
+
+  &__empty-text {
+    font-size: $warm-font-md;
+    color: $warm-text-hint;
+  }
+
+  &__card {
+    background: $warm-bg-white;
+    border-radius: $warm-radius-lg;
+    padding: $warm-spacing-lg;
+    margin-bottom: $warm-spacing-md;
+    box-shadow: $warm-shadow-sm;
+  }
+
+  &__card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: $warm-spacing-md;
+    border-bottom: 1rpx solid $warm-divider;
+  }
+
+  &__card-no {
+    font-size: $warm-font-sm;
+    color: $warm-text-secondary;
+  }
+
+  &__card-status {
+    font-size: $warm-font-sm;
+    font-weight: 500;
+
+    &--pending {
+      color: $warm-warning;
+    }
+
+    &--processing {
+      color: $warm-info;
+    }
+
+    &--completed {
+      color: $warm-success;
+    }
+
+    &--rejected {
+      color: $warm-error;
+    }
+  }
+
+  &__card-body {
+    padding: $warm-spacing-md 0;
+  }
+
+  &__card-type {
+    font-size: $warm-font-md;
+    color: $warm-text-primary;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 8rpx;
+  }
+
+  &__card-reason {
+    font-size: $warm-font-sm;
+    color: $warm-text-secondary;
+  }
+
+  &__card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: $warm-spacing-md;
+    border-top: 1rpx solid $warm-divider;
+  }
+
+  &__card-time {
+    font-size: $warm-font-sm;
+    color: $warm-text-hint;
+  }
+
+  &__card-arrow {
+    font-size: 32rpx;
+    color: $warm-text-hint;
+  }
+}
