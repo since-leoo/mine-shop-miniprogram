@@ -2,7 +2,7 @@
   "name": "warm-shop-miniprogram",
   "version": "1.0.0",
   "private": true,
-  "description": "温馨商城小程序 - Taro跨端版",
+  "description": "MineShop",
   "templateInfo": {
     "name": "default",
     "typescript": true,
